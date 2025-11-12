@@ -98,6 +98,38 @@ export class PostController {
   }
 
   /**
+   * Récupérer le feed personnalisé
+   * GET /posts/feed/my-feed
+   * Nécessite authentification
+   */
+  @Get('feed/my-feed')
+  async getMyFeed(
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+    @Query('onlyWithMedia') onlyWithMedia?: boolean,
+  ) {
+    // TODO: Récupérer l'utilisateur authentifié depuis le contexte (JWT)
+    // const currentUser = req.user;
+    const mockUser = { id: 1, type: 'User' } as any;
+
+    const posts = await this.postService.getPersonalizedFeed(mockUser, {
+      limit: limit || 20,
+      offset: offset || 0,
+      onlyWithMedia: onlyWithMedia === true,
+    });
+
+    return {
+      success: true,
+      data: posts.map((post) => this.postMapper.toSimpleData(post)),
+      meta: {
+        count: posts.length,
+        limit: limit || 20,
+        offset: offset || 0,
+      },
+    };
+  }
+
+  /**
    * Récupérer le feed public
    * GET /posts/feed/public
    */

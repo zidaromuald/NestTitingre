@@ -13,6 +13,7 @@ import { PartenariatsModule } from './modules/partenariats/partenariats.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
+import { MediaModule } from './modules/media/media.module';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 
@@ -47,6 +48,7 @@ import jwtConfig from './config/jwt.config';
     SocietesModule,
     GroupesModule,
     PostsModule,
+    MediaModule,
     SuivisModule,
     PartenariatsModule,
     MessagesModule,

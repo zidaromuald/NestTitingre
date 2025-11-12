@@ -5,11 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserRepository } from '../repositories/user.repository';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { SearchUserDto } from '../dto/search-user.dto';
+import { UpdateUserProfilDto } from '../dto/update-user-profil.dto';
 import { User } from '../entities/user.entity';
+import { UserProfil } from '../entities/user-profil.entity';
 import { UserMapper } from '../mappers/user.mapper';
 
 @Injectable()
@@ -17,6 +20,8 @@ export class UserService {
   constructor(
     @InjectRepository(UserRepository)
     private readonly userRepository: UserRepository,
+    @InjectRepository(UserProfil)
+    private readonly profilRepository: Repository<UserProfil>,
     private readonly userMapper: UserMapper,
   ) {}
 
@@ -108,11 +113,132 @@ export class UserService {
 
   async validateUser(identifier: string, password: string): Promise<User | null> {
     const user = await this.findByIdentifier(identifier);
-    
+
     if (user && (await bcrypt.compare(password, user.password))) {
       return user;
     }
-    
+
     return null;
+  }
+
+  // ==================== MÉTHODES DE PROFIL ====================
+
+  /**
+   * Récupérer le profil complet d'un utilisateur (User + UserProfil)
+   */
+  async getProfile(userId: number): Promise<{
+    user: User;
+    profile: UserProfil;
+  }> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['profile'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    // Si le profil n'existe pas, créer un profil vide
+    if (!user.profile) {
+      user.profile = await this.createEmptyProfile(userId);
+    }
+
+    return {
+      user,
+      profile: user.profile,
+    };
+  }
+
+  /**
+   * Mettre à jour le profil utilisateur
+   */
+  async updateProfile(
+    userId: number,
+    updateDto: UpdateUserProfilDto,
+  ): Promise<UserProfil> {
+    // Vérifier que l'utilisateur existe
+    await this.findById(userId);
+
+    // Chercher le profil existant
+    let profil = await this.profilRepository.findOne({
+      where: { user_id: userId },
+    });
+
+    if (!profil) {
+      // Créer un nouveau profil
+      const newProfil = new UserProfil();
+      newProfil.user_id = userId;
+      Object.assign(newProfil, updateDto);
+      profil = newProfil;
+    } else {
+      // Mettre à jour le profil existant
+      Object.assign(profil, updateDto);
+    }
+
+    return this.profilRepository.save(profil);
+  }
+
+  /**
+   * Mettre à jour la photo de profil
+   */
+  async updateProfilePhoto(userId: number, photoUrl: string): Promise<UserProfil> {
+    return this.updateProfile(userId, { photo: photoUrl });
+  }
+
+  /**
+   * Récupérer les statistiques du profil
+   */
+  async getProfileStats(userId: number): Promise<{
+    postsCount: number;
+    followersCount: number;
+    followingCount: number;
+    groupesCount: number;
+    societesCount: number;
+    profileCompletude: number;
+  }> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['profile', 'groupes', 'societes'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    // TODO: Récupérer le nombre de posts via PostService
+    const postsCount = 0; // await this.postService.countByAuthor(userId, 'User');
+
+    // TODO: Récupérer les suivis via SuiviService
+    const followersCount = 0; // await this.suiviService.countFollowers(userId, 'User');
+    const followingCount = 0; // await this.suiviService.countFollowing(userId, 'User');
+
+    const groupesCount = user.groupes?.length || 0;
+    const societesCount = user.societes?.length || 0;
+
+    // Calculer le score de complétude du profil
+    const profileCompletude = user.profile
+      ? user.profile.getCompletudeScore()
+      : 0;
+
+    return {
+      postsCount,
+      followersCount,
+      followingCount,
+      groupesCount,
+      societesCount,
+      profileCompletude,
+    };
+  }
+
+  /**
+   * Créer un profil vide pour un utilisateur
+   */
+  private async createEmptyProfile(userId: number): Promise<UserProfil> {
+    const profil = new UserProfil();
+    profil.user_id = userId;
+    profil.competences = [];
+
+    return this.profilRepository.save(profil);
   }
 }

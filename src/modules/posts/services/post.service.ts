@@ -1,7 +1,7 @@
 // modules/posts/services/post.service.ts
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Brackets } from 'typeorm';
 import { Post, PostVisibility } from '../entities/post.entity';
 import { PostRepository, PostSearchFilters } from '../repositories/post.repository';
 import { PostPolymorphicService } from './post-polymorphic.service';
@@ -175,6 +175,72 @@ export class PostService {
     onlyWithMedia?: boolean;
   }): Promise<Post[]> {
     return this.postRepository.getFeed(options);
+  }
+
+  /**
+   * Récupérer le feed personnalisé d'un utilisateur
+   * Inclut:
+   * - Posts des utilisateurs/sociétés qu'il suit
+   * - Posts des groupes dont il est membre
+   * - Ses propres posts
+   */
+  async getPersonalizedFeed(
+    currentUser: User | Societe,
+    options?: {
+      limit?: number;
+      offset?: number;
+      onlyWithMedia?: boolean;
+    },
+  ): Promise<Post[]> {
+    const limit = options?.limit || 20;
+    const offset = options?.offset || 0;
+
+    // TODO: Récupérer les IDs des utilisateurs/sociétés suivis
+    // const followedIds = await this.getFollowedIds(currentUser);
+
+    // TODO: Récupérer les IDs des groupes dont l'utilisateur est membre
+    // const groupeIds = await this.getUserGroupeIds(currentUser);
+
+    // Pour l'instant, on retourne les posts publics
+    // À remplacer quand le système de suivis sera connecté
+    const query = this.postRepo
+      .createQueryBuilder('post')
+      .leftJoinAndSelect('post.groupe', 'groupe')
+      .where('post.visibility = :visibility', {
+        visibility: PostVisibility.PUBLIC,
+      })
+      .orderBy('post.created_at', 'DESC')
+      .take(limit)
+      .skip(offset);
+
+    if (options?.onlyWithMedia) {
+      query.andWhere(
+        "(post.images IS NOT NULL AND jsonb_array_length(post.images) > 0) OR " +
+        "(post.videos IS NOT NULL AND jsonb_array_length(post.videos) > 0)",
+      );
+    }
+
+    return query.getMany();
+
+    // TODO: Query finale quand suivis seront implémentés:
+    // return this.postRepo
+    //   .createQueryBuilder('post')
+    //   .leftJoinAndSelect('post.groupe', 'groupe')
+    //   .where(
+    //     new Brackets((qb) => {
+    //       qb.where('post.posted_by_id = :userId AND post.posted_by_type = :userType', {
+    //         userId: currentUser.id,
+    //         userType: currentUser instanceof User ? 'User' : 'Societe',
+    //       })
+    //       .orWhere('post.posted_by_id IN (:...followedIds)', { followedIds })
+    //       .orWhere('post.groupe_id IN (:...groupeIds)', { groupeIds });
+    //     }),
+    //   )
+    //   .andWhere('post.visibility != :private', { private: PostVisibility.PRIVATE })
+    //   .orderBy('post.created_at', 'DESC')
+    //   .take(limit)
+    //   .skip(offset)
+    //   .getMany();
   }
 
   /**

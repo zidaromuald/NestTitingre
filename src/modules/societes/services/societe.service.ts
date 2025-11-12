@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import type { Cache } from 'cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject } from '@nestjs/common';
@@ -13,7 +14,9 @@ import { SocieteRepository } from '../repositories/societe.repository';
 import { CreateSocieteDto } from '../dto/create-societe.dto';
 import { SearchSocieteDto } from '../dto/search-societe.dto';
 import { AdvancedSearchDto } from '../dto/advanced-search.dto';
+import { UpdateSocieteProfilDto } from '../dto/update-societe-profil.dto';
 import { Societe } from '../entities/societe.entity';
+import { SocieteProfil } from '../entities/societe-profil.entity';
 import { SocieteMapper } from '../mappers/societe.mapper';
 
 @Injectable()
@@ -21,6 +24,8 @@ export class SocieteService {
   constructor(
     @InjectRepository(SocieteRepository)
     private readonly societeRepository: SocieteRepository,
+    @InjectRepository(SocieteProfil)
+    private readonly profilRepository: Repository<SocieteProfil>,
     private readonly societeMapper: SocieteMapper,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
@@ -180,5 +185,128 @@ async advancedSearch(searchDto: AdvancedSearchDto) {
     }
 
     return null;
+  }
+
+  // ==================== MÉTHODES DE PROFIL ====================
+
+  /**
+   * Récupérer le profil complet d'une société (Societe + SocieteProfil)
+   */
+  async getProfile(societeId: number): Promise<{
+    societe: Societe;
+    profile: SocieteProfil;
+  }> {
+    const societe = await this.societeRepository.findOne({
+      where: { id: societeId },
+      relations: ['profile', 'membres'],
+    });
+
+    if (!societe) {
+      throw new NotFoundException('Société introuvable');
+    }
+
+    // Si le profil n'existe pas, créer un profil vide
+    if (!societe.profile) {
+      societe.profile = await this.createEmptyProfile(societeId);
+    }
+
+    return {
+      societe,
+      profile: societe.profile,
+    };
+  }
+
+  /**
+   * Mettre à jour le profil de la société
+   */
+  async updateProfile(
+    societeId: number,
+    updateDto: UpdateSocieteProfilDto,
+  ): Promise<SocieteProfil> {
+    // Vérifier que la société existe
+    await this.findById(societeId);
+
+    // Chercher le profil existant
+    let profil = await this.profilRepository.findOne({
+      where: { societe_id: societeId },
+    });
+
+    if (!profil) {
+      // Créer un nouveau profil
+      const newProfil = new SocieteProfil();
+      newProfil.societe_id = societeId;
+      Object.assign(newProfil, updateDto);
+      profil = newProfil;
+    } else {
+      // Mettre à jour le profil existant
+      Object.assign(profil, updateDto);
+    }
+
+    return this.profilRepository.save(profil);
+  }
+
+  /**
+   * Mettre à jour le logo de la société
+   */
+  async updateLogo(societeId: number, logoUrl: string): Promise<SocieteProfil> {
+    return this.updateProfile(societeId, { logo: logoUrl });
+  }
+
+  /**
+   * Récupérer les statistiques du profil société
+   */
+  async getProfileStats(societeId: number): Promise<{
+    postsCount: number;
+    followersCount: number;
+    followingCount: number;
+    membresCount: number;
+    groupesCount: number;
+    profileCompletude: number;
+  }> {
+    const societe = await this.societeRepository.findOne({
+      where: { id: societeId },
+      relations: ['profile', 'membres'],
+    });
+
+    if (!societe) {
+      throw new NotFoundException('Société introuvable');
+    }
+
+    // TODO: Récupérer le nombre de posts via PostService
+    const postsCount = 0; // await this.postService.countByAuthor(societeId, 'Societe');
+
+    // TODO: Récupérer les suivis via SuiviService
+    const followersCount = 0; // await this.suiviService.countFollowers(societeId, 'Societe');
+    const followingCount = 0; // await this.suiviService.countFollowing(societeId, 'Societe');
+
+    // TODO: Récupérer les groupes créés
+    const groupesCount = 0; // await this.groupeService.countBySociete(societeId);
+
+    const membresCount = societe.membres?.length || 0;
+
+    // Calculer le score de complétude du profil
+    const profileCompletude = societe.profile
+      ? societe.profile.getCompletudeScore()
+      : 0;
+
+    return {
+      postsCount,
+      followersCount,
+      followingCount,
+      membresCount,
+      groupesCount,
+      profileCompletude,
+    };
+  }
+
+  /**
+   * Créer un profil vide pour une société
+   */
+  private async createEmptyProfile(societeId: number): Promise<SocieteProfil> {
+    const profil = new SocieteProfil();
+    profil.societe_id = societeId;
+    profil.certifications = [];
+
+    return this.profilRepository.save(profil);
   }
 }
