@@ -3,6 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { GroupeService } from './services/groupe.service';
 import { GroupePolymorphicService } from './services/groupe-polymorphic.service';
 import { GroupeController } from './controllers/groupe.controller';
+import { GroupeMembreController } from './controllers/groupe-membre.controller';
+import { GroupeInvitationController } from './controllers/groupe-invitation.controller';
+import { GroupeProfilController } from './controllers/groupe-profil.controller';
 import { GroupeRepository } from './repositories/groupe.repository';
 import { GroupeMapper } from './mappers/groupe.mapper';
 import { Groupe } from './entities/groupe.entity';
@@ -32,7 +35,12 @@ import { Post } from '../posts/entities/post.entity';
     GroupeRepository,
     GroupeMapper,
   ],
-  controllers: [GroupeController],
+  controllers: [
+    GroupeController,
+    GroupeMembreController,
+    GroupeInvitationController,
+    GroupeProfilController,
+  ],
   exports: [GroupeService, GroupePolymorphicService],
 })
 export class GroupesModule {}

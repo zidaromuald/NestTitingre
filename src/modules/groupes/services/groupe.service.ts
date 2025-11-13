@@ -151,4 +151,195 @@ export class GroupeService {
     await this.groupeUserRepository.save(groupeUser);
     return { message: 'Rôle mis à jour' };
   }
+
+  /**
+   * Supprimer un groupe (admin uniquement)
+   */
+  async deleteGroupe(groupeId: number, userId: number) {
+    const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
+    if (!groupe) throw new NotFoundException('Groupe non trouvé');
+
+    const role = await this.groupeRepository.getMembreRole(groupeId, userId);
+    if (role !== MembreRole.ADMIN) {
+      throw new ForbiddenException('Seuls les admins peuvent supprimer le groupe');
+    }
+
+    // Supprimer les relations avant le groupe
+    await this.groupeUserRepository.delete({ groupe_id: groupeId });
+    await this.groupeInvitationRepository.delete({ groupe_id: groupeId });
+    await this.groupeProfilRepository.delete({ groupe_id: groupeId });
+    await this.groupeRepository.delete(groupeId);
+
+    return { message: 'Groupe supprimé avec succès' };
+  }
+
+  /**
+   * Rejoindre un groupe public (sans invitation)
+   */
+  async joinGroupe(groupeId: number, userId: number) {
+    const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
+    if (!groupe) throw new NotFoundException('Groupe non trouvé');
+
+    // Vérifier que le groupe est public
+    if (groupe.type !== 'public') {
+      throw new ForbiddenException('Ce groupe nécessite une invitation');
+    }
+
+    // Vérifier si déjà membre
+    const isMembre = await this.groupeRepository.isUserMembre(groupeId, userId);
+    if (isMembre) {
+      throw new BadRequestException('Vous êtes déjà membre de ce groupe');
+    }
+
+    // Vérifier si le groupe est plein
+    const membresCount = await this.groupeRepository.countMembres(groupeId);
+    if (groupe.isFull(membresCount)) {
+      throw new BadRequestException('Le groupe est complet');
+    }
+
+    // Ajouter le membre
+    await this.groupeUserRepository.save(
+      this.groupeUserRepository.create({
+        groupe_id: groupeId,
+        user_id: userId,
+        role: MembreRole.MEMBRE,
+        status: MembreStatus.ACTIVE,
+      }),
+    );
+
+    return { message: 'Vous avez rejoint le groupe avec succès' };
+  }
+
+  /**
+   * Expulser un membre du groupe (admin uniquement)
+   */
+  async removeMembre(groupeId: number, targetUserId: number, adminUserId: number) {
+    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId);
+    if (role !== MembreRole.ADMIN) {
+      throw new ForbiddenException('Seuls les admins peuvent expulser des membres');
+    }
+
+    // Vérifier que le membre existe
+    const groupeUser = await this.groupeUserRepository.findOne({
+      where: { groupe_id: groupeId, user_id: targetUserId },
+    });
+    if (!groupeUser) throw new NotFoundException('Membre non trouvé');
+
+    // Ne pas permettre l'expulsion d'un admin par un autre admin
+    if (groupeUser.role === MembreRole.ADMIN && adminUserId !== targetUserId) {
+      throw new ForbiddenException('Impossible d\'expulser un administrateur');
+    }
+
+    await this.groupeUserRepository.delete({ groupe_id: groupeId, user_id: targetUserId });
+    return { message: 'Membre expulsé avec succès' };
+  }
+
+  /**
+   * Suspendre un membre (admin uniquement)
+   */
+  async suspendMembre(groupeId: number, targetUserId: number, adminUserId: number) {
+    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId);
+    if (role !== MembreRole.ADMIN) {
+      throw new ForbiddenException('Seuls les admins peuvent suspendre des membres');
+    }
+
+    const groupeUser = await this.groupeUserRepository.findOne({
+      where: { groupe_id: groupeId, user_id: targetUserId },
+    });
+    if (!groupeUser) throw new NotFoundException('Membre non trouvé');
+
+    // Ne pas permettre la suspension d'un admin
+    if (groupeUser.role === MembreRole.ADMIN) {
+      throw new ForbiddenException('Impossible de suspendre un administrateur');
+    }
+
+    groupeUser.status = MembreStatus.SUSPENDED;
+    await this.groupeUserRepository.save(groupeUser);
+
+    return { message: 'Membre suspendu avec succès' };
+  }
+
+  /**
+   * Bannir un membre définitivement (admin uniquement)
+   */
+  async banMembre(groupeId: number, targetUserId: number, adminUserId: number) {
+    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId);
+    if (role !== MembreRole.ADMIN) {
+      throw new ForbiddenException('Seuls les admins peuvent bannir des membres');
+    }
+
+    const groupeUser = await this.groupeUserRepository.findOne({
+      where: { groupe_id: groupeId, user_id: targetUserId },
+    });
+    if (!groupeUser) throw new NotFoundException('Membre non trouvé');
+
+    // Ne pas permettre le bannissement d'un admin
+    if (groupeUser.role === MembreRole.ADMIN) {
+      throw new ForbiddenException('Impossible de bannir un administrateur');
+    }
+
+    groupeUser.status = MembreStatus.BANNED;
+    await this.groupeUserRepository.save(groupeUser);
+
+    return { message: 'Membre banni avec succès' };
+  }
+
+  /**
+   * Récupérer les invitations reçues par un utilisateur
+   */
+  async getMyInvitations(userId: number) {
+    const invitations = await this.groupeInvitationRepository.find({
+      where: { invited_user_id: userId, status: InvitationStatus.PENDING },
+      relations: ['groupe'],
+      order: { created_at: 'DESC' },
+    });
+
+    const result = await Promise.all(
+      invitations.map(async (invitation) => {
+        const groupe = invitation.groupe;
+        const membresCount = await this.groupeRepository.countMembres(groupe.id);
+        return {
+          id: invitation.id,
+          message: invitation.message,
+          created_at: invitation.created_at,
+          groupe: this.groupeMapper.toPublicData(groupe, membresCount),
+          invited_by_user_id: invitation.invited_by_user_id,
+        };
+      }),
+    );
+
+    return { total: result.length, invitations: result };
+  }
+
+  /**
+   * Mettre à jour le profil d'un groupe (admin uniquement)
+   */
+  async updateProfil(
+    groupeId: number,
+    updateData: {
+      photo_couverture?: string;
+      photo_profil?: string;
+      description_detaillee?: string;
+      regles?: string;
+      lien_externe?: string;
+      couleur_theme?: string;
+    },
+    userId: number,
+  ) {
+    const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
+    if (!groupe) throw new NotFoundException('Groupe non trouvé');
+
+    const role = await this.groupeRepository.getMembreRole(groupeId, userId);
+    if (role !== MembreRole.ADMIN) {
+      throw new ForbiddenException('Seuls les admins peuvent modifier le profil');
+    }
+
+    const profil = await this.groupeProfilRepository.findOne({ where: { groupe_id: groupeId } });
+    if (!profil) throw new NotFoundException('Profil du groupe non trouvé');
+
+    Object.assign(profil, updateData);
+    await this.groupeProfilRepository.save(profil);
+
+    return { message: 'Profil mis à jour avec succès', profil };
+  }
 }

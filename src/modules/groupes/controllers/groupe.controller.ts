@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -15,8 +16,6 @@ import {
 import { GroupeService } from '../services/groupe.service';
 import { CreateGroupeDto } from '../dto/create-groupe.dto';
 import { UpdateGroupeDto } from '../dto/update-groupe.dto';
-import { InviteMembreDto } from '../dto/invite-membre.dto';
-import { UpdateMembreRoleDto } from '../dto/update-membre-role.dto';
 
 @Controller('groupes')
 export class GroupeController {
@@ -34,6 +33,25 @@ export class GroupeController {
   }
 
   /**
+   * Récupérer les groupes de l'utilisateur connecté
+   * GET /groupes/me
+   */
+  @Get('me')
+  async getMyGroupes(@Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.groupeService.getUserGroupes(userId);
+  }
+
+  /**
+   * Rechercher des groupes
+   * GET /groupes/search/query?q=mot
+   */
+  @Get('search/query')
+  async search(@Query('q') query: string) {
+    return this.groupeService.search(query, 20);
+  }
+
+  /**
    * Récupérer un groupe par ID
    * GET /groupes/:id
    */
@@ -44,12 +62,31 @@ export class GroupeController {
   }
 
   /**
-   * Rechercher des groupes
-   * GET /groupes/search?q=mot
+   * Vérifier si l'utilisateur est membre du groupe
+   * GET /groupes/:id/is-member
    */
-  @Get('search/query')
-  async search(@Query('q') query: string) {
-    return this.groupeService.search(query, 20);
+  @Get(':id/is-member')
+  async isMember(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    const userId = req.user?.id || 1;
+    // TODO: Implémenter dans le service si nécessaire
+    return {
+      success: true,
+      isMember: await this.groupeService['groupeRepository'].isUserMembre(id, userId),
+    };
+  }
+
+  /**
+   * Récupérer le rôle de l'utilisateur dans le groupe
+   * GET /groupes/:id/my-role
+   */
+  @Get(':id/my-role')
+  async getMyRole(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    const userId = req.user?.id || 1;
+    const role = await this.groupeService['groupeRepository'].getMembreRole(id, userId);
+    return {
+      success: true,
+      role,
+    };
   }
 
   /**
@@ -64,5 +101,27 @@ export class GroupeController {
   ) {
     const userId = req.user?.id || 1;
     return this.groupeService.update(id, updateGroupeDto, userId);
+  }
+
+  /**
+   * Quitter un groupe
+   * POST /groupes/:id/leave
+   */
+  @Post(':id/leave')
+  @HttpCode(HttpStatus.OK)
+  async leaveGroupe(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.groupeService.leaveGroupe(id, userId);
+  }
+
+  /**
+   * Supprimer un groupe (admin uniquement)
+   * DELETE /groupes/:id
+   */
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteGroupe(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    const userId = req.user?.id || 1;
+    return this.groupeService.deleteGroupe(id, userId);
   }
 }
