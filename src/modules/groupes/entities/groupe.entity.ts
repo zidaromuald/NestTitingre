@@ -19,14 +19,15 @@ import { GroupeInvitation } from './groupe-invitation.entity';
 import { Post } from '../../posts/entities/post.entity';
 
 export enum GroupeType {
-  PRIVE = 'prive',
   PUBLIC = 'public',
+  PRIVATE = 'private',
+  MEMBERS_ONLY = 'members_only',
 }
 
 export enum GroupeCategorie {
-  SIMPLE = 'simple',
-  PROFESSIONNEL = 'professionnel',
-  SUPERGROUPE = 'supergroupe',
+  ACTIVE = 'active',
+  ARCHIVED = 'archived',
+  DELETED = 'deleted',
 }
 
 export enum MembreRole {
@@ -60,9 +61,10 @@ export class Groupe {
   created_by_type: string; // 'User' ou 'Societe'
 
   @Column({
+    name: 'visibilite',
     type: 'enum',
     enum: GroupeType,
-    default: GroupeType.PRIVE,
+    default: GroupeType.PUBLIC,
   })
   type: GroupeType;
 
@@ -70,9 +72,10 @@ export class Groupe {
   max_membres: number;
 
   @Column({
+    name: 'statut',
     type: 'enum',
     enum: GroupeCategorie,
-    default: GroupeCategorie.SIMPLE,
+    default: GroupeCategorie.ACTIVE,
   })
   categorie: GroupeCategorie;
 
@@ -92,9 +95,9 @@ export class Groupe {
 
   @ManyToMany(() => User, (user) => user.groupes)
   @JoinTable({
-    name: 'groupe_user',
+    name: 'groupe_users',
     joinColumn: { name: 'groupe_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'member_id', referencedColumnName: 'id' },
   })
   membres: User[];
 
@@ -121,13 +124,15 @@ export class Groupe {
     return membresCount >= this.max_membres;
   }
 
-  getCategorieByMembersCount(membresCount: number): GroupeCategorie {
+  // Note: Cette méthode n'est plus pertinente car categorie représente maintenant le statut
+  // Pour déterminer la taille du groupe, utilisez directement max_membres ou comptez les membres
+  getCategorieByMembersCount(membresCount: number): string {
     if (membresCount >= 10000) {
-      return GroupeCategorie.SUPERGROUPE;
+      return 'supergroupe';
     } else if (membresCount >= 101) {
-      return GroupeCategorie.PROFESSIONNEL;
+      return 'professionnel';
     } else {
-      return GroupeCategorie.SIMPLE;
+      return 'simple';
     }
   }
 }

@@ -199,7 +199,7 @@ export class UserService {
   }> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['profile', 'groupes', 'societes'],
+      relations: ['profile'],
     });
 
     if (!user) {
@@ -213,8 +213,20 @@ export class UserService {
     const followersCount = 0; // await this.suiviService.countFollowers(userId, 'User');
     const followingCount = 0; // await this.suiviService.countFollowing(userId, 'User');
 
-    const groupesCount = user.groupes?.length || 0;
-    const societesCount = user.societes?.length || 0;
+    // Compter les groupes dont l'utilisateur est membre
+    // La relation est polymorphique, on doit compter manuellement
+    const groupesCount = await this.userRepository.manager.query(
+      `SELECT COUNT(*) as count FROM groupe_users
+       WHERE member_id = $1 AND member_type = 'User'`,
+      [userId],
+    );
+
+    // Compter les sociétés dont l'utilisateur est membre
+    const societesCount = await this.userRepository.manager.query(
+      `SELECT COUNT(*) as count FROM societe_users
+       WHERE user_id = $1`,
+      [userId],
+    );
 
     // Calculer le score de complétude du profil
     const profileCompletude = user.profile
@@ -225,8 +237,8 @@ export class UserService {
       postsCount,
       followersCount,
       followingCount,
-      groupesCount,
-      societesCount,
+      groupesCount: parseInt(groupesCount[0]?.count || '0'),
+      societesCount: parseInt(societesCount[0]?.count || '0'),
       profileCompletude,
     };
   }
@@ -237,7 +249,6 @@ export class UserService {
   private async createEmptyProfile(userId: number): Promise<UserProfil> {
     const profil = new UserProfil();
     profil.user_id = userId;
-    profil.competences = [];
 
     return this.profilRepository.save(profil);
   }

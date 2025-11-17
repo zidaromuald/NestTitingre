@@ -25,7 +25,7 @@ export class UserProfil {
   bio: string;
 
   @Column({ type: 'json', nullable: true })
-  competences: string[];
+  competences: string[] | null;
 
   @Column({ type: 'text', nullable: true })
   experience: string;
@@ -44,7 +44,7 @@ export class UserProfil {
   portfolio: string;
 
   @Column({ type: 'json', nullable: true })
-  langues: string[];
+  langues: string[] | null;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   disponibilite: string;

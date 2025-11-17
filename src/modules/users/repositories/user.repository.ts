@@ -122,8 +122,7 @@ export class UserRepository extends Repository<User> {
             .orWhere('user.prenom LIKE :term', { term: `${term}%` })
             .orWhere('user.activite LIKE :term', { term: `${term}%` });
         }),
-      )
-      .andWhere('user.email_verified_at IS NOT NULL');
+      );
 
     if (currentUserId) {
       query.andWhere('user.id != :currentUserId', { currentUserId });

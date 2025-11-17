@@ -104,7 +104,7 @@ export class SocieteRepository extends Repository<Societe> {
 
   async searchByName(q: string): Promise<Societe[]> {
     return this.createQueryBuilder('societe')
-      .where('societe.societe LIKE :q', { q: `${q}%` })
+      .where('societe.nom_societe LIKE :q', { q: `${q}%` })
       .andWhere('societe.email_verified_at IS NOT NULL')
       .select([
         'societe.id',
@@ -178,7 +178,7 @@ export class SocieteRepository extends Repository<Societe> {
     return this.createQueryBuilder('societe')
       .where(
         new Brackets((qb) => {
-          qb.where('societe.societe LIKE :term', { term: `${term}%` })
+          qb.where('societe.nom_societe LIKE :term', { term: `${term}%` })
             .orWhere('societe.secteur_activite LIKE :term', {
               term: `${term}%`,
             })

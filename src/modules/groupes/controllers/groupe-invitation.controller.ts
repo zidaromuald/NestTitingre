@@ -9,11 +9,14 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { GroupeService } from '../services/groupe.service';
 import { InviteMembreDto } from '../dto/invite-membre.dto';
 
 @Controller('groupes')
+@UseGuards(JwtAuthGuard)
 export class GroupeInvitationController {
   constructor(private readonly groupeService: GroupeService) {}
 
@@ -28,7 +31,7 @@ export class GroupeInvitationController {
     @Body() inviteDto: InviteMembreDto,
     @Request() req: any,
   ) {
-    const invitedByUserId = req.user?.id || 1;
+    const invitedByUserId = req.user.id;
     return this.groupeService.inviteMembre(groupeId, inviteDto, invitedByUserId);
   }
 
@@ -38,7 +41,7 @@ export class GroupeInvitationController {
    */
   @Get('invitations/me')
   async getMyInvitations(@Request() req: any) {
-    const userId = req.user?.id || 1;
+    const userId = req.user.id;
     return this.groupeService.getMyInvitations(userId);
   }
 
@@ -52,7 +55,7 @@ export class GroupeInvitationController {
     @Param('id', ParseIntPipe) invitationId: number,
     @Request() req: any,
   ) {
-    const userId = req.user?.id || 1;
+    const userId = req.user.id;
     return this.groupeService.acceptInvitation(invitationId, userId);
   }
 
@@ -66,7 +69,7 @@ export class GroupeInvitationController {
     @Param('id', ParseIntPipe) invitationId: number,
     @Request() req: any,
   ) {
-    const userId = req.user?.id || 1;
+    const userId = req.user.id;
     return this.groupeService.declineInvitation(invitationId, userId);
   }
 }

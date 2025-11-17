@@ -10,15 +10,39 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { GroupeService } from '../services/groupe.service';
 
 // DTO pour la mise à jour du profil
 class UpdateGroupeProfilDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   photo_couverture?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   photo_profil?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
   description_detaillee?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
   regles?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   lien_externe?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
   couleur_theme?: string;
 }
 
@@ -51,7 +75,7 @@ export class GroupeProfilController {
     @Body() updateProfilDto: UpdateGroupeProfilDto,
     @Request() req: any,
   ) {
-    const userId = req.user?.id || 1;
+    const userId = req.user?.id;
     return this.groupeService.updateProfil(groupeId, updateProfilDto, userId);
   }
 }

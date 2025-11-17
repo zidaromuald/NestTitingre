@@ -1,0 +1,311 @@
+{
+  "info": {
+    "name": "User Profile API",
+    "description": "Collection pour tester les endpoints de profil utilisateur",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"votre_email_ou_numero\",\n  \"password\": \"votre_mot_de_passe\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Se connecter pour obtenir un token JWT"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Profile Management",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me"]
+            },
+            "description": "Récupérer le profil de l'utilisateur connecté"
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me/stats",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "stats"]
+            },
+            "description": "Récupérer les statistiques du profil (posts, followers, etc.)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update My Profile (Complete)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Développeur passionné avec 5 ans d'expérience en développement web\",\n  \"competences\": [\"JavaScript\", \"TypeScript\", \"NestJS\", \"React\", \"PostgreSQL\"],\n  \"experience\": \"5 ans en tant que développeur full-stack dans diverses startups\",\n  \"formation\": \"Master en Informatique - Université de Paris\",\n  \"linkedin\": \"https://linkedin.com/in/johndoe\",\n  \"github\": \"https://github.com/johndoe\",\n  \"portfolio\": \"https://johndoe.dev\",\n  \"langues\": [\"Français\", \"Anglais\", \"Espagnol\"],\n  \"disponibilite\": \"Disponible immédiatement\",\n  \"salaire_souhaite\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "profile"]
+            },
+            "description": "Mettre à jour le profil complet"
+          },
+          "response": []
+        },
+        {
+          "name": "Update My Profile (Partial)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Développeur backend spécialisé en NestJS\",\n  \"competences\": [\"NestJS\", \"TypeScript\", \"Docker\", \"PostgreSQL\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "profile"]
+            },
+            "description": "Mise à jour partielle du profil"
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Profile Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Sélectionnez une image (JPG, PNG, GIF, WEBP)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/photo",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "photo"]
+            },
+            "description": "Uploader une photo de profil"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Other Users",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/:userId",
+              "host": ["{{base_url}}"],
+              "path": ["users", ":userId"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "ID de l'utilisateur"
+                }
+              ]
+            },
+            "description": "Récupérer le profil d'un autre utilisateur"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/:userId/stats",
+              "host": ["{{base_url}}"],
+              "path": ["users", ":userId", "stats"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "ID de l'utilisateur"
+                }
+              ]
+            },
+            "description": "Récupérer les statistiques d'un autre utilisateur"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "item": [
+        {
+          "name": "Upload Without File (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/photo",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "photo"]
+            },
+            "description": "Test sans fichier - doit retourner 400"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile Without Auth (401)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Test sans authentification\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "profile"]
+            },
+            "description": "Test sans token - doit retourner 401"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile Invalid URL (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"linkedin\": \"pas-une-url-valide\",\n  \"github\": \"pas-une-url\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "profile"]
+            },
+            "description": "Test avec URLs invalides - doit retourner 400"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_JWT_TOKEN_HERE",
+      "type": "string"
+    }
+  ]
+}

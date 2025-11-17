@@ -26,8 +26,8 @@ export class GroupeRepository extends Repository<Groupe> {
    */
   async findByUserId(userId: number): Promise<Groupe[]> {
     return this.createQueryBuilder('groupe')
-      .innerJoin('groupe_user', 'gu', 'gu.groupe_id = groupe.id')
-      .where('gu.user_id = :userId', { userId })
+      .innerJoin('groupe_users', 'gu', 'gu.groupe_id = groupe.id')
+      .where('gu.member_id = :userId AND gu.member_type = :memberType', { userId, memberType: 'User' })
       .orderBy('gu.joined_at', 'DESC')
       .getMany();
   }
@@ -82,7 +82,8 @@ export class GroupeRepository extends Repository<Groupe> {
       .count({
         where: {
           groupe_id: groupeId,
-          user_id: userId,
+          member_id: userId,
+          member_type: 'User',
         },
       });
     return count > 0;
@@ -97,7 +98,8 @@ export class GroupeRepository extends Repository<Groupe> {
       .findOne({
         where: {
           groupe_id: groupeId,
-          user_id: userId,
+          member_id: userId,
+          member_type: 'User',
         },
       });
     return groupeUser?.role || null;

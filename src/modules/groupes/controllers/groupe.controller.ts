@@ -12,7 +12,10 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { GroupeService } from '../services/groupe.service';
 import { CreateGroupeDto } from '../dto/create-groupe.dto';
 import { UpdateGroupeDto } from '../dto/update-groupe.dto';
@@ -26,9 +29,17 @@ export class GroupeController {
    * POST /groupes
    */
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createGroupeDto: CreateGroupeDto, @Request() req: any) {
-    const creator = req.user || { id: 1, type: 'User' };
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise pour créer un groupe');
+    }
+    // Convertir userType ('user' ou 'societe') en type ('User' ou 'Societe')
+    const creator = {
+      id: req.user.id,
+      type: req.user.userType === 'user' ? 'User' : 'Societe',
+    };
     return this.groupeService.create(createGroupeDto, creator);
   }
 
@@ -37,9 +48,12 @@ export class GroupeController {
    * GET /groupes/me
    */
   @Get('me')
+  @UseGuards(JwtAuthGuard)
   async getMyGroupes(@Request() req: any) {
-    const userId = req.user?.id || 1;
-    return this.groupeService.getUserGroupes(userId);
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise');
+    }
+    return this.groupeService.getUserGroupes(req.user.id);
   }
 
   /**
@@ -66,12 +80,14 @@ export class GroupeController {
    * GET /groupes/:id/is-member
    */
   @Get(':id/is-member')
+  @UseGuards(JwtAuthGuard)
   async isMember(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
-    const userId = req.user?.id || 1;
-    // TODO: Implémenter dans le service si nécessaire
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise');
+    }
     return {
       success: true,
-      isMember: await this.groupeService['groupeRepository'].isUserMembre(id, userId),
+      isMember: await this.groupeService['groupeRepository'].isUserMembre(id, req.user.id),
     };
   }
 
@@ -80,9 +96,12 @@ export class GroupeController {
    * GET /groupes/:id/my-role
    */
   @Get(':id/my-role')
+  @UseGuards(JwtAuthGuard)
   async getMyRole(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
-    const userId = req.user?.id || 1;
-    const role = await this.groupeService['groupeRepository'].getMembreRole(id, userId);
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise');
+    }
+    const role = await this.groupeService['groupeRepository'].getMembreRole(id, req.user.id);
     return {
       success: true,
       role,
@@ -94,13 +113,16 @@ export class GroupeController {
    * PUT /groupes/:id
    */
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateGroupeDto: UpdateGroupeDto,
     @Request() req: any,
   ) {
-    const userId = req.user?.id || 1;
-    return this.groupeService.update(id, updateGroupeDto, userId);
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise');
+    }
+    return this.groupeService.update(id, updateGroupeDto, req.user.id);
   }
 
   /**
@@ -108,10 +130,13 @@ export class GroupeController {
    * POST /groupes/:id/leave
    */
   @Post(':id/leave')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async leaveGroupe(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
-    const userId = req.user?.id || 1;
-    return this.groupeService.leaveGroupe(id, userId);
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise');
+    }
+    return this.groupeService.leaveGroupe(id, req.user.id);
   }
 
   /**
@@ -119,9 +144,12 @@ export class GroupeController {
    * DELETE /groupes/:id
    */
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteGroupe(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
-    const userId = req.user?.id || 1;
-    return this.groupeService.deleteGroupe(id, userId);
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise');
+    }
+    return this.groupeService.deleteGroupe(id, req.user.id);
   }
 }

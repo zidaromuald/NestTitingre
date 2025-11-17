@@ -16,6 +16,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { UserTypeGuard } from '../../../common/guards/user-type.guard';
+import { UserType } from '../../../common/decorators/user-type.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { SocieteService } from '../services/societe.service';
 import { SearchSocieteDto } from '../dto/search-societe.dto';
@@ -114,6 +116,8 @@ export class SocieteController {
    * GET /societes/me
    */
   @Get('me')
+  @UseGuards(UserTypeGuard)
+  @UserType('societe')
   async getMyProfile(@CurrentUser() societe: Societe) {
     const { societe: societeData, profile } = await this.societeService.getProfile(societe.id);
 
@@ -132,7 +136,23 @@ export class SocieteController {
    * GET /societes/me/stats
    */
   @Get('me/stats')
-  async getMyStats(@CurrentUser() societe: Societe) {
+  @UseGuards(UserTypeGuard)
+  @UserType('societe')
+  async getMyStats(@CurrentUser() societe: any) {
+    // Debug: vérifier le type d'utilisateur
+    console.log('🔍 CurrentUser dans me/stats:', {
+      id: societe.id,
+      userType: societe.userType,
+      nom_societe: societe.nom_societe,
+      type: typeof societe,
+    });
+
+    if (societe.userType !== 'societe') {
+      throw new BadRequestException(
+        `Type d'utilisateur incorrect: ${societe.userType}. Token société requis.`,
+      );
+    }
+
     const stats = await this.societeService.getProfileStats(societe.id);
 
     return {
@@ -146,6 +166,8 @@ export class SocieteController {
    * PUT /societes/me/profile
    */
   @Put('me/profile')
+  @UseGuards(UserTypeGuard)
+  @UserType('societe')
   async updateMyProfile(
     @CurrentUser() societe: Societe,
     @Body() updateDto: UpdateSocieteProfilDto,
@@ -164,6 +186,8 @@ export class SocieteController {
    * POST /societes/me/logo
    */
   @Post('me/logo')
+  @UseGuards(UserTypeGuard)
+  @UserType('societe')
   @UseInterceptors(FileInterceptor('file', getMulterOptions(MediaType.IMAGE)))
   async uploadLogo(
     @CurrentUser() societe: Societe,

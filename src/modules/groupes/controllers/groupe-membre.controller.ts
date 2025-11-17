@@ -11,11 +11,14 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { GroupeService } from '../services/groupe.service';
 import { UpdateMembreRoleDto } from '../dto/update-membre-role.dto';
 
 @Controller('groupes/:groupeId/membres')
+@UseGuards(JwtAuthGuard)
 export class GroupeMembreController {
   constructor(private readonly groupeService: GroupeService) {}
 
@@ -38,7 +41,7 @@ export class GroupeMembreController {
     @Param('groupeId', ParseIntPipe) groupeId: number,
     @Request() req: any,
   ) {
-    const userId = req.user?.id || 1;
+    const userId = req.user.id;
     return this.groupeService.joinGroupe(groupeId, userId);
   }
 
@@ -53,7 +56,7 @@ export class GroupeMembreController {
     @Body() updateRoleDto: UpdateMembreRoleDto,
     @Request() req: any,
   ) {
-    const adminUserId = req.user?.id || 1;
+    const adminUserId = req.user.id;
     return this.groupeService.updateMembreRole(
       groupeId,
       userId,
@@ -73,7 +76,7 @@ export class GroupeMembreController {
     @Param('userId', ParseIntPipe) userId: number,
     @Request() req: any,
   ) {
-    const adminUserId = req.user?.id || 1;
+    const adminUserId = req.user.id;
     return this.groupeService.removeMembre(groupeId, userId, adminUserId);
   }
 
@@ -88,7 +91,7 @@ export class GroupeMembreController {
     @Param('userId', ParseIntPipe) userId: number,
     @Request() req: any,
   ) {
-    const adminUserId = req.user?.id || 1;
+    const adminUserId = req.user.id;
     return this.groupeService.suspendMembre(groupeId, userId, adminUserId);
   }
 
@@ -103,7 +106,7 @@ export class GroupeMembreController {
     @Param('userId', ParseIntPipe) userId: number,
     @Request() req: any,
   ) {
-    const adminUserId = req.user?.id || 1;
+    const adminUserId = req.user.id;
     return this.groupeService.banMembre(groupeId, userId, adminUserId);
   }
 }

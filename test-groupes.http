@@ -1,0 +1,145 @@
+### Variables
+@baseUrl = http://localhost:3000
+@tokenUser = YOUR_USER_JWT_TOKEN_HERE
+@tokenSociete = YOUR_SOCIETE_JWT_TOKEN_HERE
+
+### ===========================================
+### TEST 1: Créer un groupe (User)
+### ===========================================
+POST {{baseUrl}}/groupes
+Content-Type: application/json
+Authorization: Bearer {{tokenUser}}
+
+{
+  "nom": "Communauté Full-Stack Afrique",
+  "description": "Groupe dédié aux développeurs full-stack africains pour partager des ressources, offres d'emploi et projets.",
+  "type": "public",
+  "categorie": "active",
+  "maxMembres": 5000
+}
+
+### ===========================================
+### TEST 2: Créer un groupe privé (User)
+### ===========================================
+POST {{baseUrl}}/groupes
+Content-Type: application/json
+Authorization: Bearer {{tokenUser}}
+
+{
+  "nom": "Groupe de test",
+  "description": "Un groupe simple pour tester",
+  "type": "private",
+  "maxMembres": 100
+}
+
+### ===========================================
+### TEST 3: Créer un groupe (Société avec admin désigné)
+### ===========================================
+POST {{baseUrl}}/groupes
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "nom": "Groupe Entreprise Tech",
+  "description": "Groupe pour les employés de TechCorp",
+  "type": "private",
+  "categorie": "active",
+  "maxMembres": 500,
+  "adminUserId": 1
+}
+
+### ===========================================
+### TEST 4: Créer un groupe minimal
+### ===========================================
+POST {{baseUrl}}/groupes
+Content-Type: application/json
+Authorization: Bearer {{tokenUser}}
+
+{
+  "nom": "Mon Groupe"
+}
+
+### ===========================================
+### TEST 5: Récupérer mes groupes
+### ===========================================
+GET {{baseUrl}}/groupes/me
+Authorization: Bearer {{tokenUser}}
+
+### ===========================================
+### TEST 6: Rechercher des groupes
+### ===========================================
+GET {{baseUrl}}/groupes/search/query?q=Full-Stack
+Authorization: Bearer {{tokenUser}}
+
+### ===========================================
+### TEST 7: Récupérer un groupe par ID
+### ===========================================
+GET {{baseUrl}}/groupes/1
+Authorization: Bearer {{tokenUser}}
+
+### ===========================================
+### TEST 8: Vérifier si je suis membre
+### ===========================================
+GET {{baseUrl}}/groupes/1/is-member
+Authorization: Bearer {{tokenUser}}
+
+### ===========================================
+### TEST 9: Récupérer mon rôle dans le groupe
+### ===========================================
+GET {{baseUrl}}/groupes/1/my-role
+Authorization: Bearer {{tokenUser}}
+
+### ===========================================
+### ERREURS À ÉVITER
+### ===========================================
+
+### ❌ ERREUR 1: Ne PAS envoyer created_by_id et created_by_type
+POST {{baseUrl}}/groupes
+Content-Type: application/json
+Authorization: Bearer {{tokenUser}}
+
+{
+  "nom": "Test",
+  "created_by_id": 1,        ❌ À SUPPRIMER
+  "created_by_type": "User"  ❌ À SUPPRIMER
+}
+
+### ❌ ERREUR 2: Valeurs enum incorrectes
+POST {{baseUrl}}/groupes
+Content-Type: application/json
+Authorization: Bearer {{tokenUser}}
+
+{
+  "nom": "Test",
+  "type": "PUBLIC",           ❌ MAUVAIS (doit être "public" en minuscule)
+  "categorie": "pro"          ❌ MAUVAIS (doit être "professionnel")
+}
+
+### ✅ CORRECTION: Valeurs enum correctes
+POST {{baseUrl}}/groupes
+Content-Type: application/json
+Authorization: Bearer {{tokenUser}}
+
+{
+  "nom": "Test",
+  "type": "public",           ✅ CORRECT: "public", "private", "members_only"
+  "categorie": "active"        ✅ CORRECT: "active", "archived", "deleted"
+}
+
+### ===========================================
+### Valeurs possibles
+### ===========================================
+
+# Type (visibilité):
+#   - "public"        : Groupe public, tout le monde peut voir et rejoindre
+#   - "private"       : Groupe privé, sur invitation uniquement
+#   - "members_only"  : Visible par tous, seuls les membres voient le contenu
+
+# Catégorie (statut):
+#   - "active"    : Groupe actif
+#   - "archived"  : Groupe archivé
+#   - "deleted"   : Groupe supprimé
+
+# maxMembres:
+#   - Minimum: 2
+#   - Maximum: 100000

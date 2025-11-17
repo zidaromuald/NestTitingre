@@ -1,0 +1,116 @@
+### Variables
+@baseUrl = http://localhost:3000
+@token = YOUR_JWT_TOKEN_HERE
+
+### ===========================================
+### TEST 1: Mettre à jour le profil complet
+### ===========================================
+PUT {{baseUrl}}/users/me/profile
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "bio": "Développeur passionné avec 5 ans d'expérience en développement web",
+  "competences": ["JavaScript", "TypeScript", "NestJS", "React", "PostgreSQL"],
+  "experience": "5 ans en tant que développeur full-stack dans diverses startups",
+  "formation": "Master en Informatique - Université de Paris",
+  "linkedin": "https://linkedin.com/in/johndoe",
+  "github": "https://github.com/johndoe",
+  "portfolio": "https://johndoe.dev",
+  "langues": ["Français", "Anglais", "Espagnol"],
+  "disponibilite": "Disponible immédiatement",
+  "salaire_souhaite": 50000
+}
+
+### ===========================================
+### TEST 2: Mettre à jour partiellement le profil (seulement bio et compétences)
+### ===========================================
+PUT {{baseUrl}}/users/me/profile
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "bio": "Développeur backend spécialisé en NestJS et microservices",
+  "competences": ["NestJS", "TypeScript", "Docker", "Kubernetes", "PostgreSQL"]
+}
+
+### ===========================================
+### TEST 3: Ajouter seulement les liens sociaux
+### ===========================================
+PUT {{baseUrl}}/users/me/profile
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "linkedin": "https://linkedin.com/in/nouveau-profil",
+  "github": "https://github.com/nouveau-profil",
+  "portfolio": "https://mon-portfolio.com"
+}
+
+### ===========================================
+### TEST 4: Uploader une photo de profil
+### ===========================================
+### Note: Pour tester l'upload de fichier, vous devez utiliser un outil comme:
+### - Postman
+### - Insomnia
+### - Thunder Client (extension VSCode)
+### - cURL en ligne de commande
+
+# Exemple avec cURL (à exécuter dans le terminal):
+# curl -X POST http://localhost:3000/users/me/photo \
+#   -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
+#   -F "file=@/path/to/your/image.jpg"
+
+POST {{baseUrl}}/users/me/photo
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="profile.jpg"
+Content-Type: image/jpeg
+
+< ./path/to/image.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ===========================================
+### TEST 5: Récupérer mon profil pour vérifier les changements
+### ===========================================
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+
+### ===========================================
+### TEST 6: Récupérer mes statistiques
+### ===========================================
+GET {{baseUrl}}/users/me/stats
+Authorization: Bearer {{token}}
+
+### ===========================================
+### TESTS D'ERREUR
+### ===========================================
+
+### TEST 7: Tentative avec URL invalide (doit échouer)
+PUT {{baseUrl}}/users/me/profile
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "linkedin": "pas-une-url-valide",
+  "github": "pas-une-url"
+}
+
+### TEST 8: Tentative avec bio trop longue (doit échouer - max 500 caractères)
+PUT {{baseUrl}}/users/me/profile
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+}
+
+### TEST 9: Tentative sans token (doit échouer avec 401)
+PUT {{baseUrl}}/users/me/profile
+Content-Type: application/json
+
+{
+  "bio": "Test sans authentification"
+}

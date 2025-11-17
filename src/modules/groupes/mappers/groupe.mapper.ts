@@ -69,7 +69,6 @@ export class GroupeMapper {
       nom: user.nom,
       prenom: user.prenom,
       role: groupeUser.role,
-      status: groupeUser.status,
       joinedAt: groupeUser.joined_at,
     };
   }

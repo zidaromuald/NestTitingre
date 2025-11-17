@@ -20,7 +20,7 @@ export enum InvitationStatus {
 }
 
 @Entity('groupe_invitations')
-@Index(['groupe_id', 'invited_user_id'])
+@Index(['groupe_id', 'invited_id', 'invited_type'])
 @Index(['status']) // Propriété TypeScript (colonne 'statut' en base)
 export class GroupeInvitation {
   @PrimaryGeneratedColumn()
@@ -30,10 +30,16 @@ export class GroupeInvitation {
   groupe_id: number;
 
   @Column({ type: 'int' })
-  invited_user_id: number;
+  invited_id: number;
+
+  @Column({ type: 'varchar', length: 100 })
+  invited_type: string;
 
   @Column({ type: 'int' })
-  invited_by_user_id: number;
+  inviter_id: number;
+
+  @Column({ type: 'varchar', length: 100 })
+  inviter_type: string;
 
   @Column({
     type: 'enum',
@@ -51,7 +57,7 @@ export class GroupeInvitation {
   expires_at: Date;
 
   @Column({ type: 'timestamp', nullable: true })
-  responded_at: Date;
+  accepted_at: Date;
 
   @CreateDateColumn()
   created_at: Date;
@@ -65,11 +71,11 @@ export class GroupeInvitation {
   groupe: Groupe;
 
   @ManyToOne(() => User, (user) => user.invitationsRecues)
-  @JoinColumn({ name: 'invited_user_id' })
+  @JoinColumn({ name: 'invited_id' })
   invitedUser: User;
 
   @ManyToOne(() => User, (user) => user.invitationsEnvoyees)
-  @JoinColumn({ name: 'invited_by_user_id' })
+  @JoinColumn({ name: 'inviter_id' })
   invitedByUser: User;
 
   // Méthodes helper

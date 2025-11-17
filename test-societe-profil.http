@@ -1,0 +1,119 @@
+### Variables
+@baseUrl = http://localhost:3000
+@tokenSociete = YOUR_SOCIETE_JWT_TOKEN_HERE
+
+### ===========================================
+### TEST 1: Mettre à jour le profil société (CORRECT)
+### ===========================================
+PUT {{baseUrl}}/societes/me/profile
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "secteur_activite": "Divers",
+  "description": "Vente et Achat de produits alimentaires",
+  "taille_entreprise": "moyen",
+  "nombre_employes": 25,
+  "chiffre_affaires": 1000000,
+  "annee_creation": 2024,
+  "certifications": ["ISO 9001", "ISO 14001"],
+  "adresse_complete": "Ouezzin ville",
+  "ville": "Bobo",
+  "pays": "Burkina Faso",
+  "code_postal": "01234",
+  "telephone": "+22664898745",
+  "email_contact": "contact@masociete.bf"
+}
+
+### ===========================================
+### TEST 2: Mettre à jour seulement quelques champs
+### ===========================================
+PUT {{baseUrl}}/societes/me/profile
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "description": "Vente et Achat",
+  "nombre_employes": 30,
+  "ville": "Bobo-Dioulasso"
+}
+
+### ===========================================
+### TEST 3: Ajouter un logo (après upload)
+### ===========================================
+PUT {{baseUrl}}/societes/me/profile
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "logo": "http://localhost:3000/uploads/images/image-1763216838155-204539158.PNG"
+}
+
+### ===========================================
+### TEST 4: Récupérer le profil mis à jour
+### ===========================================
+GET {{baseUrl}}/societes/me
+Authorization: Bearer {{tokenSociete}}
+
+### ===========================================
+### TEST 5: Récupérer les statistiques
+### ===========================================
+GET {{baseUrl}}/societes/me/stats
+Authorization: Bearer {{tokenSociete}}
+
+### ===========================================
+### ERREURS COURANTES À ÉVITER
+### ===========================================
+
+### ❌ ERREUR 1: Ne PAS envoyer id, societe_id, created_at, updated_at
+PUT {{baseUrl}}/societes/me/profile
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "id": 1,                    ❌ À SUPPRIMER
+  "societe_id": 1,           ❌ À SUPPRIMER
+  "description": "Test",
+  "created_at": "...",       ❌ À SUPPRIMER
+  "updated_at": "..."        ❌ À SUPPRIMER
+}
+
+### ❌ ERREUR 2: Ne PAS envoyer des nombres en string
+PUT {{baseUrl}}/societes/me/profile
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "nombre_employes": "25",        ❌ MAUVAIS (string)
+  "chiffre_affaires": "1000000",  ❌ MAUVAIS (string)
+  "annee_creation": "2024"        ❌ MAUVAIS (string)
+}
+
+### ✅ CORRECTION: Envoyer des vrais nombres
+PUT {{baseUrl}}/societes/me/profile
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "nombre_employes": 25,        ✅ CORRECT (number)
+  "chiffre_affaires": 1000000,  ✅ CORRECT (number)
+  "annee_creation": 2024        ✅ CORRECT (number)
+}
+
+### ❌ ERREUR 3: Logo doit être une URL valide
+PUT {{baseUrl}}/societes/me/profile
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "logo": "image.png"  ❌ MAUVAIS (pas une URL)
+}
+
+### ✅ CORRECTION: URL complète
+PUT {{baseUrl}}/societes/me/profile
+Content-Type: application/json
+Authorization: Bearer {{tokenSociete}}
+
+{
+  "logo": "http://localhost:3000/uploads/images/image.png"  ✅ CORRECT
+}

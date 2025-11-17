@@ -39,8 +39,4 @@ export class CreateGroupeDto {
   @IsOptional()
   @IsInt()
   adminUserId?: number;
-
-  // Ces champs seront remplis automatiquement
-  created_by_id?: number;
-  created_by_type?: string;
 }

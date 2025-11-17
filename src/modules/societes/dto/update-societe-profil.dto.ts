@@ -16,7 +16,7 @@ import {
 export class UpdateSocieteProfilDto {
   @IsOptional()
   @IsString()
-  @IsUrl()
+  @IsUrl({ require_tld: false }, { message: 'Le logo doit être une URL valide' })
   logo?: string;
 
   @IsOptional()

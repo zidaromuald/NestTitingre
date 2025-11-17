@@ -198,7 +198,7 @@ async advancedSearch(searchDto: AdvancedSearchDto) {
   }> {
     const societe = await this.societeRepository.findOne({
       where: { id: societeId },
-      relations: ['profile', 'membres'],
+      relations: ['profile'],
     });
 
     if (!societe) {
@@ -263,13 +263,21 @@ async advancedSearch(searchDto: AdvancedSearchDto) {
     groupesCount: number;
     profileCompletude: number;
   }> {
+    console.log('🔍 getProfileStats appelé avec societeId:', societeId);
+
     const societe = await this.societeRepository.findOne({
       where: { id: societeId },
-      relations: ['profile', 'membres'],
+      relations: ['profile'],
     });
 
+    console.log('🔍 Société trouvée:', societe ? {
+      id: societe.id,
+      nom_societe: societe.nom_societe,
+      hasProfile: !!societe.profile,
+    } : 'NULL');
+
     if (!societe) {
-      throw new NotFoundException('Société introuvable');
+      throw new NotFoundException(`Société introuvable avec l'ID: ${societeId}`);
     }
 
     // TODO: Récupérer le nombre de posts via PostService
@@ -279,10 +287,19 @@ async advancedSearch(searchDto: AdvancedSearchDto) {
     const followersCount = 0; // await this.suiviService.countFollowers(societeId, 'Societe');
     const followingCount = 0; // await this.suiviService.countFollowing(societeId, 'Societe');
 
-    // TODO: Récupérer les groupes créés
-    const groupesCount = 0; // await this.groupeService.countBySociete(societeId);
+    // Compter les membres de la société (relation many-to-many)
+    const membresCountResult = await this.societeRepository.manager.query(
+      `SELECT COUNT(*) as count FROM societe_users
+       WHERE societe_id = $1`,
+      [societeId],
+    );
 
-    const membresCount = societe.membres?.length || 0;
+    // Compter les groupes créés par cette société (relation polymorphique)
+    const groupesCountResult = await this.societeRepository.manager.query(
+      `SELECT COUNT(*) as count FROM groupes
+       WHERE created_by_id = $1 AND created_by_type = 'Societe'`,
+      [societeId],
+    );
 
     // Calculer le score de complétude du profil
     const profileCompletude = societe.profile
@@ -293,8 +310,8 @@ async advancedSearch(searchDto: AdvancedSearchDto) {
       postsCount,
       followersCount,
       followingCount,
-      membresCount,
-      groupesCount,
+      membresCount: parseInt(membresCountResult[0]?.count || '0'),
+      groupesCount: parseInt(groupesCountResult[0]?.count || '0'),
       profileCompletude,
     };
   }

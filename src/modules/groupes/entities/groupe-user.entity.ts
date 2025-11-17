@@ -11,30 +11,32 @@ import {
 import { Groupe } from './groupe.entity';
 import { User } from '../../users/entities/user.entity';
 
-@Entity('groupe_user')
+@Entity('groupe_users')
 export class GroupeUser {
   @PrimaryColumn()
+  id: number;
+
+  @Column()
   groupe_id: number;
 
-  @PrimaryColumn()
-  user_id: number;
+  @Column()
+  member_id: number;
+
+  @Column({ type: 'varchar', length: 100 })
+  member_type: string; // 'User' ou 'Societe'
 
   @Column({
     type: 'varchar',
-    length: 50,
-    default: 'membre',
+    length: 100,
+    default: 'member',
   })
-  role: string; // 'membre', 'moderateur', 'admin'
-
-  @Column({
-    type: 'varchar',
-    length: 50,
-    default: 'active',
-  })
-  status: string; // 'active', 'suspended', 'banned'
+  role: string; // 'member', 'moderator', 'admin'
 
   @CreateDateColumn()
   joined_at: Date;
+
+  @CreateDateColumn()
+  created_at: Date;
 
   @UpdateDateColumn()
   updated_at: Date;
@@ -45,6 +47,6 @@ export class GroupeUser {
   groupe: Groupe;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: 'member_id' })
   user: User;
 }

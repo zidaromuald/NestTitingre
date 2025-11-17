@@ -3,7 +3,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GroupeRepository } from '../repositories/groupe.repository';
-import { MembreRole, MembreStatus } from '../entities/groupe.entity';
+import { MembreRole } from '../entities/groupe.entity';
 import { GroupeUser } from '../entities/groupe-user.entity';
 import { GroupeInvitation, InvitationStatus } from '../entities/groupe-invitation.entity';
 import { GroupeProfil } from '../entities/groupe-profil.entity';
@@ -30,6 +30,9 @@ export class GroupeService {
   ) {}
 
   async create(createGroupeDto: CreateGroupeDto, creator: { id: number; type: string }) {
+    console.log('🔍 Service create - DTO:', createGroupeDto);
+    console.log('🔍 Service create - Creator:', creator);
+
     const groupe = this.groupeRepository.create({
       nom: createGroupeDto.nom,
       description: createGroupeDto.description,
@@ -40,18 +43,26 @@ export class GroupeService {
       created_by_type: creator.type,
       admin_user_id: createGroupeDto.adminUserId,
     });
+
+    console.log('🔍 Groupe object before save:', groupe);
+
     const savedGroupe = await this.groupeRepository.save(groupe);
+    console.log('✅ Groupe saved:', savedGroupe);
+
     const profil = this.groupeProfilRepository.create({ groupe_id: savedGroupe.id });
     await this.groupeProfilRepository.save(profil);
+    console.log('✅ Profil created');
+
     if (creator.type === 'User') {
       await this.groupeUserRepository.save(
         this.groupeUserRepository.create({
           groupe_id: savedGroupe.id,
-          user_id: creator.id,
+          member_id: creator.id,
+          member_type: creator.type,
           role: MembreRole.ADMIN,
-          status: MembreStatus.ACTIVE,
         }),
       );
+      console.log('✅ User added as admin');
     }
     return { message: 'Groupe créé avec succès', groupe: this.groupeMapper.toPublicData(savedGroupe, 1) };
   }
@@ -106,8 +117,10 @@ export class GroupeService {
     const invitation = await this.groupeInvitationRepository.save(
       this.groupeInvitationRepository.create({
         groupe_id: groupeId,
-        invited_user_id: inviteDto.userId,
-        invited_by_user_id: invitedByUserId,
+        invited_id: inviteDto.userId,
+        invited_type: 'User',
+        inviter_id: invitedByUserId,
+        inviter_type: 'User',
         message: inviteDto.message,
         status: InvitationStatus.PENDING,
       }),
@@ -118,11 +131,11 @@ export class GroupeService {
   async acceptInvitation(invitationId: number, userId: number) {
     const invitation = await this.groupeInvitationRepository.findOne({ where: { id: invitationId } });
     if (!invitation) throw new NotFoundException('Invitation non trouvée');
-    if (invitation.invited_user_id !== userId) throw new ForbiddenException('Invitation non destinée');
+    if (invitation.invited_id !== userId) throw new ForbiddenException('Invitation non destinée');
     if (invitation.status !== InvitationStatus.PENDING) throw new BadRequestException('Invitation non valide');
-    await this.groupeUserRepository.save(this.groupeUserRepository.create({ groupe_id: invitation.groupe_id, user_id: userId, role: MembreRole.MEMBRE, status: MembreStatus.ACTIVE }));
+    await this.groupeUserRepository.save(this.groupeUserRepository.create({ groupe_id: invitation.groupe_id, member_id: userId, member_type: 'User', role: MembreRole.MEMBRE }));
     invitation.status = InvitationStatus.ACCEPTED;
-    invitation.responded_at = new Date();
+    invitation.accepted_at = new Date();
     await this.groupeInvitationRepository.save(invitation);
     return { message: 'Invitation acceptée' };
   }
@@ -130,22 +143,22 @@ export class GroupeService {
   async declineInvitation(invitationId: number, userId: number) {
     const invitation = await this.groupeInvitationRepository.findOne({ where: { id: invitationId } });
     if (!invitation) throw new NotFoundException('Invitation non trouvée');
-    if (invitation.invited_user_id !== userId) throw new ForbiddenException('Invitation non destinée');
+    if (invitation.invited_id !== userId) throw new ForbiddenException('Invitation non destinée');
     invitation.status = InvitationStatus.DECLINED;
-    invitation.responded_at = new Date();
+    invitation.accepted_at = new Date();
     await this.groupeInvitationRepository.save(invitation);
     return { message: 'Invitation refusée' };
   }
 
   async leaveGroupe(groupeId: number, userId: number) {
     if (!(await this.groupeRepository.isUserMembre(groupeId, userId))) throw new BadRequestException('Non membre');
-    await this.groupeUserRepository.delete({ groupe_id: groupeId, user_id: userId });
+    await this.groupeUserRepository.delete({ groupe_id: groupeId, member_id: userId, member_type: 'User' });
     return { message: 'Groupe quitté' };
   }
 
   async updateMembreRole(groupeId: number, targetUserId: number, updateRoleDto: UpdateMembreRoleDto, adminUserId: number) {
     if ((await this.groupeRepository.getMembreRole(groupeId, adminUserId)) !== MembreRole.ADMIN) throw new ForbiddenException('Admin uniquement');
-    const groupeUser = await this.groupeUserRepository.findOne({ where: { groupe_id: groupeId, user_id: targetUserId } });
+    const groupeUser = await this.groupeUserRepository.findOne({ where: { groupe_id: groupeId, member_id: targetUserId, member_type: 'User' } });
     if (!groupeUser) throw new NotFoundException('Membre non trouvé');
     groupeUser.role = updateRoleDto.role;
     await this.groupeUserRepository.save(groupeUser);
@@ -201,9 +214,9 @@ export class GroupeService {
     await this.groupeUserRepository.save(
       this.groupeUserRepository.create({
         groupe_id: groupeId,
-        user_id: userId,
+        member_id: userId,
+        member_type: 'User',
         role: MembreRole.MEMBRE,
-        status: MembreStatus.ACTIVE,
       }),
     );
 
@@ -221,7 +234,7 @@ export class GroupeService {
 
     // Vérifier que le membre existe
     const groupeUser = await this.groupeUserRepository.findOne({
-      where: { groupe_id: groupeId, user_id: targetUserId },
+      where: { groupe_id: groupeId, member_id: targetUserId, member_type: 'User' },
     });
     if (!groupeUser) throw new NotFoundException('Membre non trouvé');
 
@@ -230,7 +243,7 @@ export class GroupeService {
       throw new ForbiddenException('Impossible d\'expulser un administrateur');
     }
 
-    await this.groupeUserRepository.delete({ groupe_id: groupeId, user_id: targetUserId });
+    await this.groupeUserRepository.delete({ groupe_id: groupeId, member_id: targetUserId, member_type: 'User' });
     return { message: 'Membre expulsé avec succès' };
   }
 
@@ -244,7 +257,7 @@ export class GroupeService {
     }
 
     const groupeUser = await this.groupeUserRepository.findOne({
-      where: { groupe_id: groupeId, user_id: targetUserId },
+      where: { groupe_id: groupeId, member_id: targetUserId, member_type: 'User' },
     });
     if (!groupeUser) throw new NotFoundException('Membre non trouvé');
 
@@ -253,8 +266,9 @@ export class GroupeService {
       throw new ForbiddenException('Impossible de suspendre un administrateur');
     }
 
-    groupeUser.status = MembreStatus.SUSPENDED;
-    await this.groupeUserRepository.save(groupeUser);
+    // Note: La table groupe_users n'a pas de champ status
+    // Pour l'instant, on supprime simplement le membre (comme une suspension)
+    await this.groupeUserRepository.delete({ groupe_id: groupeId, member_id: targetUserId, member_type: 'User' });
 
     return { message: 'Membre suspendu avec succès' };
   }
@@ -269,7 +283,7 @@ export class GroupeService {
     }
 
     const groupeUser = await this.groupeUserRepository.findOne({
-      where: { groupe_id: groupeId, user_id: targetUserId },
+      where: { groupe_id: groupeId, member_id: targetUserId, member_type: 'User' },
     });
     if (!groupeUser) throw new NotFoundException('Membre non trouvé');
 
@@ -278,8 +292,9 @@ export class GroupeService {
       throw new ForbiddenException('Impossible de bannir un administrateur');
     }
 
-    groupeUser.status = MembreStatus.BANNED;
-    await this.groupeUserRepository.save(groupeUser);
+    // Note: La table groupe_users n'a pas de champ status
+    // Pour l'instant, on supprime simplement le membre (comme un bannissement)
+    await this.groupeUserRepository.delete({ groupe_id: groupeId, member_id: targetUserId, member_type: 'User' });
 
     return { message: 'Membre banni avec succès' };
   }
@@ -289,7 +304,7 @@ export class GroupeService {
    */
   async getMyInvitations(userId: number) {
     const invitations = await this.groupeInvitationRepository.find({
-      where: { invited_user_id: userId, status: InvitationStatus.PENDING },
+      where: { invited_id: userId, status: InvitationStatus.PENDING },
       relations: ['groupe'],
       order: { created_at: 'DESC' },
     });
@@ -303,7 +318,7 @@ export class GroupeService {
           message: invitation.message,
           created_at: invitation.created_at,
           groupe: this.groupeMapper.toPublicData(groupe, membresCount),
-          invited_by_user_id: invitation.invited_by_user_id,
+          inviter_id: invitation.inviter_id,
         };
       }),
     );
