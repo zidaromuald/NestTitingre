@@ -52,6 +52,29 @@ export class UserProfil {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   salaire_souhaite: number;
 
+  // Colonnes pour les notifications
+  @Column({ type: 'boolean', default: true })
+  notifications_posts: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  notifications_email: boolean;
+
+  // Colonnes pour les statistiques
+  @Column({ type: 'timestamp', nullable: true })
+  derniere_visite: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  derniere_interaction: Date;
+
+  @Column({ type: 'int', default: 0 })
+  total_likes: number;
+
+  @Column({ type: 'int', default: 0 })
+  total_commentaires: number;
+
+  @Column({ type: 'int', default: 0 })
+  total_partages: number;
+
   @CreateDateColumn()
   created_at: Date;
 

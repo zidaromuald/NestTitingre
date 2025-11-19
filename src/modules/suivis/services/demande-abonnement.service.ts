@@ -9,7 +9,6 @@ import { User } from '../../users/entities/user.entity';
 import { Societe } from '../../societes/entities/societe.entity';
 import { PagePartenariat, VisibilitePagePartenariat } from '../../partenariats/entities/page-partenariat.entity';
 import { DemandeAbonnementRepository } from '../repositories/demande-abonnement.repository';
-import { SuivreRepository } from '../repositories/suivre.repository';
 import { CreateDemandeAbonnementDto } from '../dto/create-demande-abonnement.dto';
 
 @Injectable()
@@ -18,11 +17,7 @@ export class DemandeAbonnementService {
     @InjectRepository(DemandeAbonnement) private readonly demandeRepo: Repository<DemandeAbonnement>,
     private readonly demandeAbonnementRepository: DemandeAbonnementRepository,
     @InjectRepository(Suivre) private readonly suivreRepo: Repository<Suivre>,
-    private readonly suivreRepository: SuivreRepository,
-    @InjectRepository(User) private readonly userRepo: Repository<User>,
-    @InjectRepository(Societe) private readonly societeRepo: Repository<Societe>,
     @InjectRepository(Abonnement) private readonly abonnementRepo: Repository<Abonnement>,
-    @InjectRepository(PagePartenariat) private readonly pagePartenaritRepo: Repository<PagePartenariat>,
     private dataSource: DataSource,
   ) {}
 
@@ -30,12 +25,12 @@ export class DemandeAbonnementService {
    * Envoyer une demande d'abonnement DIRECT (sans suivre d'abord)
    */
   async envoyerDemande(userId: number, dto: CreateDemandeAbonnementDto): Promise<DemandeAbonnement> {
-    // Vérifier que le user existe
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    // Vérifier que le user existe - utiliser DataSource au lieu de Repository
+    const user = await this.dataSource.getRepository(User).findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
 
-    // Vérifier que la société existe
-    const societe = await this.societeRepo.findOne({ where: { id: dto.societe_id } });
+    // Vérifier que la société existe - utiliser DataSource au lieu de Repository
+    const societe = await this.dataSource.getRepository(Societe).findOne({ where: { id: dto.societe_id } });
     if (!societe) throw new NotFoundException('Société introuvable');
 
     // Vérifier si demande déjà envoyée (PENDING)
@@ -43,8 +38,13 @@ export class DemandeAbonnementService {
     if (existingPending) throw new ConflictException('Demande d\'abonnement déjà envoyée en attente de réponse');
 
     // Vérifier si déjà abonné
-    const suivre = await this.suivreRepository.findSuivi(userId, 'User', dto.societe_id, 'Societe');
-    if (suivre?.abonnement) throw new ConflictException('Vous êtes déjà abonné à cette société');
+    const abonnementExistant = await this.abonnementRepo.findOne({
+      where: {
+        user_id: userId,
+        societe_id: dto.societe_id,
+      },
+    });
+    if (abonnementExistant) throw new ConflictException('Vous êtes déjà abonné à cette société');
 
     // Créer la demande
     const demande = this.demandeRepo.create({
@@ -96,9 +96,9 @@ export class DemandeAbonnementService {
       demande.responded_at = new Date();
       await queryRunner.manager.save(demande);
 
-      // 3. Récupérer les entités User et Societe
-      const user = await this.userRepo.findOne({ where: { id: demande.user_id } });
-      const societe = await this.societeRepo.findOne({ where: { id: demande.societe_id } });
+      // 3. Récupérer les entités User et Societe - utiliser DataSource
+      const user = await this.dataSource.getRepository(User).findOne({ where: { id: demande.user_id } });
+      const societe = await this.dataSource.getRepository(Societe).findOne({ where: { id: demande.societe_id } });
       if (!user || !societe) throw new NotFoundException('User ou Société introuvable');
 
       // 4. Créer 2 Suivre mutuels (User ↔ Societe)
@@ -130,9 +130,9 @@ export class DemandeAbonnementService {
       });
       const savedAbonnement = await queryRunner.manager.save(abonnement);
 
-      // 6. Créer la PagePartenariat
+      // 6. Créer la PagePartenariat - utiliser DataSource
       const titreDefaut = `${societe.nom_societe} - ${user.prenom} ${user.nom}`;
-      const pagePartenariat = this.pagePartenaritRepo.create({
+      const pagePartenariat = this.dataSource.getRepository(PagePartenariat).create({
         abonnement_id: savedAbonnement.id,
         titre: demande.titre_partenariat || titreDefaut,
         description: demande.description_partenariat || `Partenariat ${societe.nom_societe} et ${user.prenom} ${user.nom}`,

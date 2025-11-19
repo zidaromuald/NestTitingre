@@ -34,7 +34,8 @@ export class SuivreRepository extends Repository<Suivre> {
         followed_id: followedId,
         followed_type: followedType
       },
-      relations: ['abonnement'],
+      // Ne pas charger abonnement ici car jointure composite polymorphique pose problème
+      // Utiliser une requête séparée si besoin de vérifier l'abonnement
     });
   }
 

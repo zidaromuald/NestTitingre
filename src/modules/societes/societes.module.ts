@@ -16,6 +16,11 @@ import { MediaModule } from '../media/media.module';
   ],
   controllers: [SocieteController],
   providers: [SocieteRepository, SocieteService, SocieteMapper],
-  exports: [SocieteService, SocieteRepository, SocieteMapper],
+  exports: [
+    TypeOrmModule, // Export TypeORM pour que d'autres modules puissent utiliser Societe et SocieteProfil
+    SocieteService,
+    SocieteRepository,
+    SocieteMapper,
+  ],
 })
 export class SocietesModule {}

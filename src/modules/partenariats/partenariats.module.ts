@@ -43,6 +43,7 @@ import { InformationPartenaireController } from './controllers/information-parte
     InformationPartenaireController,
   ],
   exports: [
+    TypeOrmModule, // Export TypeORM pour que d'autres modules puissent utiliser PagePartenariat, TransactionPartenariat, etc.
     // Repositories
     PagePartenaritRepository,
     TransactionPartenaritRepository,

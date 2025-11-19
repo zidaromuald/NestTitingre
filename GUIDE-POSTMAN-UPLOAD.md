@@ -137,7 +137,7 @@ Après un upload réussi, vérifiez que le profil a été mis à jour :
     "profile": {
       "id": 1,
       "user_id": 1,
-      "photo": "uploads/images/1730000000000-profile.jpg",  // ← Photo mise à jour
+      "photo": "uploads/images/1730000000000-profile.jpg",  
       "bio": "Développeur passionné",
       "competences": ["JavaScript", "TypeScript"],
       "created_at": "2024-10-27T10:00:00.000Z",

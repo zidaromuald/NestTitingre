@@ -74,9 +74,6 @@ export class Abonnement {
   @Column({ type: 'timestamp', nullable: true })
   date_fin: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
-  derniere_activite_business: Date;
-
   @Column({ type: 'varchar', length: 255, nullable: true })
   secteur_collaboration: string;
 

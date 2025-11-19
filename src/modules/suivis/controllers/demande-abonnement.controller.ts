@@ -1,11 +1,14 @@
 // modules/suivis/controllers/demande-abonnement.controller.ts
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { DemandeAbonnementService } from '../services/demande-abonnement.service';
 import { DemandeAbonnementMapper } from '../mappers/demande-abonnement.mapper';
 import { CreateDemandeAbonnementDto } from '../dto/create-demande-abonnement.dto';
 import { DemandeAbonnementStatus } from '../entities/demande-abonnement.entity';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('demandes-abonnement')
+@UseGuards(JwtAuthGuard) // Protège tous les endpoints du contrôleur
 export class DemandeAbonnementController {
   constructor(
     private readonly demandeService: DemandeAbonnementService,
@@ -15,11 +18,19 @@ export class DemandeAbonnementController {
   /**
    * Envoyer une demande d'abonnement DIRECT (sans suivre d'abord)
    * POST /demandes-abonnement
+   * Accessible uniquement aux utilisateurs (pas aux sociétés)
    */
   @Post()
-  async envoyerDemande(@Body() dto: CreateDemandeAbonnementDto) {
-    const mockUserId = 1; // TODO: JWT
-    const demande = await this.demandeService.envoyerDemande(mockUserId, dto);
+  async envoyerDemande(
+    @Body() dto: CreateDemandeAbonnementDto,
+    @CurrentUser() user: any,
+  ) {
+    // Vérifier que c'est bien un utilisateur et pas une société
+    if (user.userType !== 'user') {
+      throw new UnauthorizedException('Seuls les utilisateurs peuvent envoyer des demandes d\'abonnement');
+    }
+
+    const demande = await this.demandeService.envoyerDemande(user.id, dto);
     return {
       success: true,
       message: 'Demande d\'abonnement envoyée à la société',
@@ -31,11 +42,19 @@ export class DemandeAbonnementController {
    * Accepter une demande d'abonnement
    * PUT /demandes-abonnement/:id/accept
    * Crée: Suivre + Abonnement + PagePartenariat en une seule transaction
+   * Accessible uniquement aux sociétés
    */
   @Put(':id/accept')
-  async accepterDemande(@Param('id', ParseIntPipe) id: number) {
-    const mockSocieteId = 1; // TODO: JWT (extraire societe_id du token)
-    const result = await this.demandeService.accepterDemande(id, mockSocieteId);
+  async accepterDemande(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+  ) {
+    // Vérifier que c'est bien une société
+    if (user.userType !== 'societe') {
+      throw new UnauthorizedException('Seules les sociétés peuvent accepter des demandes d\'abonnement');
+    }
+
+    const result = await this.demandeService.accepterDemande(id, user.id);
 
     return {
       success: true,
@@ -52,11 +71,19 @@ export class DemandeAbonnementController {
   /**
    * Refuser une demande d'abonnement
    * PUT /demandes-abonnement/:id/decline
+   * Accessible uniquement aux sociétés
    */
   @Put(':id/decline')
-  async refuserDemande(@Param('id', ParseIntPipe) id: number) {
-    const mockSocieteId = 1; // TODO: JWT
-    const demande = await this.demandeService.refuserDemande(id, mockSocieteId);
+  async refuserDemande(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+  ) {
+    // Vérifier que c'est bien une société
+    if (user.userType !== 'societe') {
+      throw new UnauthorizedException('Seules les sociétés peuvent refuser des demandes d\'abonnement');
+    }
+
+    const demande = await this.demandeService.refuserDemande(id, user.id);
     return {
       success: true,
       message: 'Demande d\'abonnement refusée',
@@ -67,22 +94,38 @@ export class DemandeAbonnementController {
   /**
    * Annuler une demande (par le user qui l'a envoyée)
    * DELETE /demandes-abonnement/:id
+   * Accessible uniquement aux utilisateurs
    */
   @Delete(':id')
-  async annulerDemande(@Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    await this.demandeService.annulerDemande(id, mockUserId);
+  async annulerDemande(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+  ) {
+    // Vérifier que c'est bien un utilisateur
+    if (user.userType !== 'user') {
+      throw new UnauthorizedException('Seuls les utilisateurs peuvent annuler leurs demandes');
+    }
+
+    await this.demandeService.annulerDemande(id, user.id);
     return { success: true, message: 'Demande d\'abonnement annulée' };
   }
 
   /**
    * Mes demandes envoyées
    * GET /demandes-abonnement/sent?status=pending
+   * Accessible uniquement aux utilisateurs
    */
   @Get('sent')
-  async getMesDemandesEnvoyees(@Query('status') status?: DemandeAbonnementStatus) {
-    const mockUserId = 1; // TODO: JWT
-    const demandes = await this.demandeService.getMesDemandesEnvoyees(mockUserId, status);
+  async getMesDemandesEnvoyees(
+    @Query('status') status?: DemandeAbonnementStatus,
+    @CurrentUser() user?: any,
+  ) {
+    // Vérifier que c'est bien un utilisateur
+    if (user.userType !== 'user') {
+      throw new UnauthorizedException('Endpoint réservé aux utilisateurs');
+    }
+
+    const demandes = await this.demandeService.getMesDemandesEnvoyees(user.id, status);
     const data = demandes.map(d => this.demandeMapper.toPublicData(d));
     return { success: true, data, meta: { count: data.length, status: status || 'all' } };
   }
@@ -90,11 +133,19 @@ export class DemandeAbonnementController {
   /**
    * Demandes reçues par une société
    * GET /demandes-abonnement/received?status=pending
+   * Accessible uniquement aux sociétés
    */
   @Get('received')
-  async getDemandesRecues(@Query('status') status?: DemandeAbonnementStatus) {
-    const mockSocieteId = 1; // TODO: JWT
-    const demandes = await this.demandeService.getDemandesRecues(mockSocieteId, status);
+  async getDemandesRecues(
+    @Query('status') status?: DemandeAbonnementStatus,
+    @CurrentUser() user?: any,
+  ) {
+    // Vérifier que c'est bien une société
+    if (user.userType !== 'societe') {
+      throw new UnauthorizedException('Endpoint réservé aux sociétés');
+    }
+
+    const demandes = await this.demandeService.getDemandesRecues(user.id, status);
     const data = demandes.map(d => this.demandeMapper.toPublicData(d));
     return { success: true, data, meta: { count: data.length, status: status || 'all' } };
   }
@@ -102,11 +153,16 @@ export class DemandeAbonnementController {
   /**
    * Compter les demandes en attente
    * GET /demandes-abonnement/pending/count
+   * Accessible uniquement aux sociétés
    */
   @Get('pending/count')
-  async countDemandesPending() {
-    const mockSocieteId = 1; // TODO: JWT
-    const count = await this.demandeService.countDemandesPending(mockSocieteId);
+  async countDemandesPending(@CurrentUser() user?: any) {
+    // Vérifier que c'est bien une société
+    if (user.userType !== 'societe') {
+      throw new UnauthorizedException('Endpoint réservé aux sociétés');
+    }
+
+    const count = await this.demandeService.countDemandesPending(user.id);
     return { success: true, data: { count } };
   }
 }

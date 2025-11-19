@@ -1,5 +1,5 @@
 // modules/suivis/suivis.module.ts
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SuivreService } from './services/suivre.service';
 import { SuivrePolymorphicService } from './services/suivre-polymorphic.service';
@@ -18,9 +18,9 @@ import { Suivre } from './entities/suivre.entity';
 import { InvitationSuivi } from './entities/invitation-suivi.entity';
 import { DemandeAbonnement } from './entities/demande-abonnement.entity';
 import { Abonnement } from './entities/abonnement.entity';
-import { User } from '../users/entities/user.entity';
-import { Societe } from '../societes/entities/societe.entity';
-import { PagePartenariat } from '../partenariats/entities/page-partenariat.entity';
+import { UsersModule } from '../users/users.module';
+import { SocietesModule } from '../societes/societes.module';
+import { PartenariatsModule } from '../partenariats/partenariats.module';
 
 @Module({
   imports: [
@@ -29,13 +29,10 @@ import { PagePartenariat } from '../partenariats/entities/page-partenariat.entit
       Suivre,
       DemandeAbonnement,
       Abonnement,
-      User,
-      Societe,
-      PagePartenariat,
-      InvitationSuiviRepository,
-      SuivreRepository,
-      DemandeAbonnementRepository,
     ]),
+    forwardRef(() => UsersModule),
+    forwardRef(() => SocietesModule),
+    forwardRef(() => PartenariatsModule),
   ],
   providers: [
     InvitationSuiviService,

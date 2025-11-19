@@ -16,6 +16,11 @@ import { MediaModule } from '../media/media.module';
   ],
   controllers: [UserController],
   providers: [UserRepository, UserService, UserMapper],
-  exports: [UserService, UserRepository, UserMapper],
+  exports: [
+    TypeOrmModule, // Export TypeORM pour que d'autres modules puissent utiliser User et UserProfil
+    UserService,
+    UserRepository,
+    UserMapper,
+  ],
 })
 export class UsersModule {}

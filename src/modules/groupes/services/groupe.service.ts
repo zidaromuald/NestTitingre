@@ -113,7 +113,28 @@ export class GroupeService {
   async inviteMembre(groupeId: number, inviteDto: InviteMembreDto, invitedByUserId: number) {
     const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
     if (!groupe) throw new NotFoundException('Groupe non trouvé');
-    if (!(await this.groupeRepository.isUserMembre(groupeId, invitedByUserId))) throw new ForbiddenException('Seuls les membres peuvent inviter');
+
+    // Vérifier si l'utilisateur est admin désigné OU membre du groupe
+    const isAdminDesigne = groupe.admin_user_id === invitedByUserId;
+    const isMembre = await this.groupeRepository.isUserMembre(groupeId, invitedByUserId);
+
+    if (!isAdminDesigne && !isMembre) {
+      throw new ForbiddenException('Seuls les membres ou l\'admin désigné peuvent inviter');
+    }
+
+    // Si le groupe est créé par une société, vérifier que le User est abonné
+    if (groupe.created_by_type === 'Societe') {
+      const isAbonne = await this.groupeRepository.manager.query(
+        `SELECT COUNT(*) as count FROM abonnements
+         WHERE user_id = $1 AND societe_id = $2 AND statut = 'active'`,
+        [inviteDto.userId, groupe.created_by_id]
+      );
+
+      if (parseInt(isAbonne[0]?.count || '0') === 0) {
+        throw new ForbiddenException('Seuls les abonnés de la société peuvent être invités dans ce groupe');
+      }
+    }
+
     const invitation = await this.groupeInvitationRepository.save(
       this.groupeInvitationRepository.create({
         groupe_id: groupeId,
