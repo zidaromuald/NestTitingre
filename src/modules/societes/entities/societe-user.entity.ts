@@ -11,7 +11,7 @@ import {
 import { Societe } from './societe.entity';
 import { User } from '../../users/entities/user.entity';
 
-@Entity('societe_user')
+@Entity('societe_users')
 export class SocieteUser {
   @PrimaryColumn()
   societe_id: number;
@@ -25,13 +25,6 @@ export class SocieteUser {
     default: 'membre',
   })
   role: string; // 'membre', 'admin'
-
-  @Column({
-    type: 'varchar',
-    length: 50,
-    default: 'active',
-  })
-  status: string; // 'active', 'inactive'
 
   @CreateDateColumn()
   created_at: Date;

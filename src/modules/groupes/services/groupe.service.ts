@@ -53,17 +53,17 @@ export class GroupeService {
     await this.groupeProfilRepository.save(profil);
     console.log('✅ Profil created');
 
-    if (creator.type === 'User') {
-      await this.groupeUserRepository.save(
-        this.groupeUserRepository.create({
-          groupe_id: savedGroupe.id,
-          member_id: creator.id,
-          member_type: creator.type,
-          role: MembreRole.ADMIN,
-        }),
-      );
-      console.log('✅ User added as admin');
-    }
+    // Ajouter le créateur (User OU Societe) comme admin membre du groupe
+    await this.groupeUserRepository.save(
+      this.groupeUserRepository.create({
+        groupe_id: savedGroupe.id,
+        member_id: creator.id,
+        member_type: creator.type,
+        role: MembreRole.ADMIN,
+      }),
+    );
+    console.log(`✅ ${creator.type} added as admin`);
+
     return { message: 'Groupe créé avec succès', groupe: this.groupeMapper.toPublicData(savedGroupe, 1) };
   }
 
@@ -110,20 +110,45 @@ export class GroupeService {
     return { total: groupeUsers.length, membres: groupeUsers.map((gu) => this.groupeMapper.toMembreData(gu, gu.user)) };
   }
 
-  async inviteMembre(groupeId: number, inviteDto: InviteMembreDto, invitedByUserId: number) {
+  async inviteMembre(groupeId: number, inviteDto: InviteMembreDto, inviter: { id: number; type: string }) {
     const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
     if (!groupe) throw new NotFoundException('Groupe non trouvé');
 
-    // Vérifier si l'utilisateur est admin désigné OU membre du groupe
-    const isAdminDesigne = groupe.admin_user_id === invitedByUserId;
-    const isMembre = await this.groupeRepository.isUserMembre(groupeId, invitedByUserId);
+    // Vérifier si l'inviteur a le droit d'inviter
+    let canInvite = false;
 
-    if (!isAdminDesigne && !isMembre) {
-      throw new ForbiddenException('Seuls les membres ou l\'admin désigné peuvent inviter');
+    // Si c'est un User: vérifier si admin désigné OU membre du groupe
+    if (inviter.type === 'User') {
+      const isAdminDesigne = groupe.admin_user_id === inviter.id;
+      const isMembre = await this.groupeRepository.isUserMembre(groupeId, inviter.id);
+      canInvite = isAdminDesigne || isMembre;
     }
 
-    // Si le groupe est créé par une société, vérifier que le User est abonné
-    if (groupe.created_by_type === 'Societe') {
+    // Si c'est une Societe: vérifier si c'est le créateur OU membre du groupe
+    if (inviter.type === 'Societe') {
+      const isCreateur = groupe.created_by_type === 'Societe' && groupe.created_by_id === inviter.id;
+      const isMembre = await this.groupeUserRepository.findOne({
+        where: { groupe_id: groupeId, member_id: inviter.id, member_type: 'Societe' }
+      });
+      canInvite = isCreateur || !!isMembre;
+    }
+
+    if (!canInvite) {
+      throw new ForbiddenException('Seuls les membres ou le créateur du groupe peuvent inviter');
+    }
+
+    // Vérifier si le user est déjà membre
+    const existingMember = await this.groupeUserRepository.findOne({
+      where: { groupe_id: groupeId, member_id: inviteDto.userId, member_type: 'User' }
+    });
+
+    if (existingMember) {
+      throw new BadRequestException('Cet utilisateur est déjà membre du groupe');
+    }
+
+    // Si le groupe est créé par une société ET que l'inviteur est la société
+    if (groupe.created_by_type === 'Societe' && inviter.type === 'Societe' && inviter.id === groupe.created_by_id) {
+      // Vérifier que le User est abonné
       const isAbonne = await this.groupeRepository.manager.query(
         `SELECT COUNT(*) as count FROM abonnements
          WHERE user_id = $1 AND societe_id = $2 AND statut = 'active'`,
@@ -131,18 +156,37 @@ export class GroupeService {
       );
 
       if (parseInt(isAbonne[0]?.count || '0') === 0) {
-        throw new ForbiddenException('Seuls les abonnés de la société peuvent être invités dans ce groupe');
+        throw new ForbiddenException('Seuls les abonnés de la société peuvent être ajoutés dans ce groupe');
       }
+
+      // Ajouter directement le user au groupe (sans invitation)
+      const roleToAssign = inviteDto.role || MembreRole.MEMBRE;
+      await this.groupeUserRepository.save(
+        this.groupeUserRepository.create({
+          groupe_id: groupeId,
+          member_id: inviteDto.userId,
+          member_type: 'User',
+          role: roleToAssign
+        })
+      );
+
+      return {
+        message: `Utilisateur ajouté directement au groupe avec le rôle ${roleToAssign}`,
+        ajoutDirect: true,
+        role: roleToAssign
+      };
     }
 
+    // Pour les autres cas (User inviteur ou groupe non créé par une Société), créer une invitation
     const invitation = await this.groupeInvitationRepository.save(
       this.groupeInvitationRepository.create({
         groupe_id: groupeId,
         invited_id: inviteDto.userId,
         invited_type: 'User',
-        inviter_id: invitedByUserId,
-        inviter_type: 'User',
+        inviter_id: inviter.id,
+        inviter_type: inviter.type,
         message: inviteDto.message,
+        role: inviteDto.role || MembreRole.MEMBRE,
         status: InvitationStatus.PENDING,
       }),
     );
@@ -154,11 +198,22 @@ export class GroupeService {
     if (!invitation) throw new NotFoundException('Invitation non trouvée');
     if (invitation.invited_id !== userId) throw new ForbiddenException('Invitation non destinée');
     if (invitation.status !== InvitationStatus.PENDING) throw new BadRequestException('Invitation non valide');
-    await this.groupeUserRepository.save(this.groupeUserRepository.create({ groupe_id: invitation.groupe_id, member_id: userId, member_type: 'User', role: MembreRole.MEMBRE }));
+
+    // Utiliser le rôle stocké dans l'invitation
+    const roleToAssign = invitation.role || MembreRole.MEMBRE;
+    await this.groupeUserRepository.save(
+      this.groupeUserRepository.create({
+        groupe_id: invitation.groupe_id,
+        member_id: userId,
+        member_type: 'User',
+        role: roleToAssign
+      })
+    );
+
     invitation.status = InvitationStatus.ACCEPTED;
     invitation.accepted_at = new Date();
     await this.groupeInvitationRepository.save(invitation);
-    return { message: 'Invitation acceptée' };
+    return { message: 'Invitation acceptée', role: roleToAssign };
   }
 
   async declineInvitation(invitationId: number, userId: number) {

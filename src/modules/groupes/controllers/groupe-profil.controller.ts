@@ -9,42 +9,12 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { GroupeService } from '../services/groupe.service';
-
-// DTO pour la mise à jour du profil
-class UpdateGroupeProfilDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  photo_couverture?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  photo_profil?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(5000)
-  description_detaillee?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(5000)
-  regles?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  lien_externe?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  couleur_theme?: string;
-}
+import { UpdateGroupeProfilDto } from '../dto/update-groupe-profil.dto';
 
 @Controller('groupes/:groupeId/profil')
 export class GroupeProfilController {
@@ -69,13 +39,16 @@ export class GroupeProfilController {
    * PUT /groupes/:groupeId/profil
    */
   @Put()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async updateProfil(
     @Param('groupeId', ParseIntPipe) groupeId: number,
     @Body() updateProfilDto: UpdateGroupeProfilDto,
     @Request() req: any,
   ) {
-    const userId = req.user?.id;
-    return this.groupeService.updateProfil(groupeId, updateProfilDto, userId);
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise');
+    }
+    return this.groupeService.updateProfil(groupeId, updateProfilDto, req.user.id);
   }
 }

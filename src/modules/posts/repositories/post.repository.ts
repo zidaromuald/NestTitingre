@@ -145,10 +145,18 @@ export class PostRepository extends Repository<Post> {
       });
     }
 
-    if (filters.hasMedia) {
-      query.andWhere(
-        '(post.images IS NOT NULL OR post.videos IS NOT NULL OR post.audios IS NOT NULL OR post.documents IS NOT NULL)',
-      );
+    if (filters.hasMedia !== undefined) {
+      if (filters.hasMedia === true) {
+        // Posts AVEC média
+        query.andWhere(
+          '(post.images IS NOT NULL OR post.videos IS NOT NULL OR post.audios IS NOT NULL OR post.documents IS NOT NULL)',
+        );
+      } else {
+        // Posts SANS média
+        query.andWhere(
+          '(post.images IS NULL AND post.videos IS NULL AND post.audios IS NULL AND post.documents IS NULL)',
+        );
+      }
     }
 
     if (filters.searchQuery) {

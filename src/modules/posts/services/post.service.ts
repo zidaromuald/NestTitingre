@@ -5,6 +5,7 @@ import { Repository, Brackets } from 'typeorm';
 import { Post, PostVisibility } from '../entities/post.entity';
 import { PostRepository, PostSearchFilters } from '../repositories/post.repository';
 import { PostPolymorphicService } from './post-polymorphic.service';
+import { PostPermissionService } from './post-permission.service';
 import { CreatePostDto } from '../dto/create-post.dto';
 import { UpdatePostDto } from '../dto/update-post.dto';
 import { User } from '../../users/entities/user.entity';
@@ -18,6 +19,7 @@ export class PostService {
     private readonly postRepo: Repository<Post>,
     private readonly postRepository: PostRepository,
     private readonly postPolymorphicService: PostPolymorphicService,
+    private readonly postPermissionService: PostPermissionService,
     @InjectRepository(Groupe)
     private readonly groupeRepo: Repository<Groupe>,
   ) {}
@@ -48,8 +50,17 @@ export class PostService {
         );
       }
 
-      // TODO: Vérifier que l'auteur est membre du groupe
-      // await this.verifyGroupeMembership(author, createPostDto.groupe_id);
+      // Vérifier que l'auteur est membre du groupe
+      await this.postPermissionService.verifyGroupeMembership(
+        author,
+        createPostDto.groupe_id,
+      );
+
+      // Forcer la visibilité pour les posts de groupe
+      // Si pas de visibilité spécifiée ou si public, forcer à membres_only
+      if (!createPostDto.visibility || createPostDto.visibility === PostVisibility.PUBLIC) {
+        createPostDto.visibility = PostVisibility.MEMBRES_ONLY;
+      }
     }
 
     // Vérifier si la société existe (si post dans une société)
@@ -64,8 +75,17 @@ export class PostService {
         );
       }
 
-      // TODO: Vérifier que l'auteur est membre/employé de la société
-      // await this.verifySocieteMembership(author, createPostDto.societe_id);
+      // Vérifier que l'auteur est membre/employé de la société
+      await this.postPermissionService.verifySocieteMembership(
+        author,
+        createPostDto.societe_id,
+      );
+
+      // Forcer la visibilité pour les posts de société
+      // Si pas de visibilité spécifiée ou si public, forcer à membres_only
+      if (!createPostDto.visibility || createPostDto.visibility === PostVisibility.PUBLIC) {
+        createPostDto.visibility = PostVisibility.MEMBRES_ONLY;
+      }
     }
 
     return this.postPolymorphicService.createPostWithAuthor(
@@ -195,52 +215,113 @@ export class PostService {
     const limit = options?.limit || 20;
     const offset = options?.offset || 0;
 
-    // TODO: Récupérer les IDs des utilisateurs/sociétés suivis
-    // const followedIds = await this.getFollowedIds(currentUser);
+    const currentUserId = currentUser.id;
+    const currentUserType = currentUser.constructor.name === 'User'
+      ? 'User'
+      : 'Societe';
 
-    // TODO: Récupérer les IDs des groupes dont l'utilisateur est membre
-    // const groupeIds = await this.getUserGroupeIds(currentUser);
+    // Récupérer les IDs des entités suivies
+    const followedUserIds = await this.postPermissionService.getFollowedUserIds(currentUser);
+    const followedSocieteIds = await this.postPermissionService.getFollowedSocieteIds(currentUser);
 
-    // Pour l'instant, on retourne les posts publics
-    // À remplacer quand le système de suivis sera connecté
+    // Récupérer les IDs des groupes dont l'utilisateur est membre
+    const memberGroupeIds = await this.postPermissionService.getUserGroupeIds(currentUser);
+
+    // Récupérer les IDs des groupes dont l'utilisateur est admin
+    const adminGroupeIds = await this.postPermissionService.getUserAdminGroupeIds(currentUser);
+
+    // Récupérer les IDs des sociétés dont l'utilisateur est membre/employé
+    const employeeSocieteIds = await this.postPermissionService.getUserSocieteIds(currentUser);
+
     const query = this.postRepo
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.groupe', 'groupe')
-      .where('post.visibility = :visibility', {
-        visibility: PostVisibility.PUBLIC,
-      })
+      .where(
+        new Brackets((qb) => {
+          // Mes propres posts
+          qb.where(
+            'post.posted_by_id = :currentUserId AND post.posted_by_type = :currentUserType',
+            { currentUserId, currentUserType },
+          );
+
+          // Posts personnels (public) des users suivis
+          if (followedUserIds.length > 0) {
+            qb.orWhere(
+              `post.posted_by_id IN (:...followedUserIds)
+               AND post.posted_by_type = 'User'
+               AND post.groupe_id IS NULL
+               AND post.societe_id IS NULL
+               AND post.visibility = :publicVisibility`,
+              { followedUserIds, publicVisibility: PostVisibility.PUBLIC },
+            );
+          }
+
+          // Posts personnels (public) des sociétés suivies
+          if (followedSocieteIds.length > 0) {
+            qb.orWhere(
+              `post.posted_by_id IN (:...followedSocieteIds)
+               AND post.posted_by_type = 'Societe'
+               AND post.groupe_id IS NULL
+               AND post.societe_id IS NULL
+               AND post.visibility = :publicVisibility`,
+              { followedSocieteIds, publicVisibility: PostVisibility.PUBLIC },
+            );
+          }
+
+          // Posts dans mes groupes (public et membres_only)
+          if (memberGroupeIds.length > 0) {
+            qb.orWhere(
+              `post.groupe_id IN (:...memberGroupeIds)
+               AND post.visibility IN (:...memberVisibilities)`,
+              {
+                memberGroupeIds,
+                memberVisibilities: [PostVisibility.PUBLIC, PostVisibility.MEMBRES_ONLY],
+              },
+            );
+          }
+
+          // Posts admin only dans les groupes où je suis admin
+          if (adminGroupeIds.length > 0) {
+            qb.orWhere(
+              `post.groupe_id IN (:...adminGroupeIds)
+               AND post.visibility = :adminVisibility`,
+              {
+                adminGroupeIds,
+                adminVisibility: PostVisibility.ADMINS_ONLY,
+              },
+            );
+          }
+
+          // Posts dans les sociétés dont je suis membre/employé
+          if (employeeSocieteIds.length > 0) {
+            qb.orWhere(
+              `post.societe_id IN (:...employeeSocieteIds)
+               AND post.visibility IN (:...societeMemberVisibilities)`,
+              {
+                employeeSocieteIds,
+                societeMemberVisibilities: [PostVisibility.PUBLIC, PostVisibility.MEMBRES_ONLY],
+              },
+            );
+          }
+        }),
+      )
       .orderBy('post.created_at', 'DESC')
       .take(limit)
       .skip(offset);
 
     if (options?.onlyWithMedia) {
       query.andWhere(
-        "(post.images IS NOT NULL AND jsonb_array_length(post.images) > 0) OR " +
-        "(post.videos IS NOT NULL AND jsonb_array_length(post.videos) > 0)",
+        new Brackets((mediaQb) => {
+          mediaQb
+            .where('post.images IS NOT NULL AND jsonb_array_length(post.images) > 0')
+            .orWhere('post.videos IS NOT NULL AND jsonb_array_length(post.videos) > 0')
+            .orWhere('post.audios IS NOT NULL AND jsonb_array_length(post.audios) > 0')
+            .orWhere('post.documents IS NOT NULL AND jsonb_array_length(post.documents) > 0');
+        }),
       );
     }
 
     return query.getMany();
-
-    // TODO: Query finale quand suivis seront implémentés:
-    // return this.postRepo
-    //   .createQueryBuilder('post')
-    //   .leftJoinAndSelect('post.groupe', 'groupe')
-    //   .where(
-    //     new Brackets((qb) => {
-    //       qb.where('post.posted_by_id = :userId AND post.posted_by_type = :userType', {
-    //         userId: currentUser.id,
-    //         userType: currentUser instanceof User ? 'User' : 'Societe',
-    //       })
-    //       .orWhere('post.posted_by_id IN (:...followedIds)', { followedIds })
-    //       .orWhere('post.groupe_id IN (:...groupeIds)', { groupeIds });
-    //     }),
-    //   )
-    //   .andWhere('post.visibility != :private', { private: PostVisibility.PRIVATE })
-    //   .orderBy('post.created_at', 'DESC')
-    //   .take(limit)
-    //   .skip(offset)
-    //   .getMany();
   }
 
   /**
@@ -260,17 +341,37 @@ export class PostService {
   /**
    * Épingler/désépingler un post (admin groupe uniquement)
    */
-  async togglePin(id: number, _currentUser: User | Societe): Promise<Post> {
+  async togglePin(id: number, currentUser: User | Societe): Promise<Post> {
     const post = await this.postRepo.findOne({ where: { id } });
 
     if (!post) {
       throw new NotFoundException(`Post avec l'ID ${id} introuvable`);
     }
 
-    // TODO: Vérifier que _currentUser est admin du groupe
-    // if (post.groupe_id) {
-    //   await this.verifyGroupeAdmin(_currentUser, post.groupe_id);
-    // }
+    // Vérifier que currentUser est admin du groupe ou de la société
+    if (post.groupe_id) {
+      const isAdmin = await this.postPermissionService.isGroupeAdmin(
+        currentUser,
+        post.groupe_id,
+      );
+      if (!isAdmin) {
+        throw new ForbiddenException(
+          'Seuls les administrateurs du groupe peuvent épingler/désépingler des posts',
+        );
+      }
+    }
+
+    if (post.societe_id) {
+      const isAdmin = await this.postPermissionService.isSocieteAdmin(
+        currentUser,
+        post.societe_id,
+      );
+      if (!isAdmin) {
+        throw new ForbiddenException(
+          'Seuls les administrateurs de la société peuvent épingler/désépingler des posts',
+        );
+      }
+    }
 
     post.is_pinned = !post.is_pinned;
     return this.postRepo.save(post);

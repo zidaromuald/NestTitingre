@@ -11,12 +11,18 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { PostService } from '../services/post.service';
 import { PostMapper } from '../mappers/post.mapper';
 import { CreatePostDto } from '../dto/create-post.dto';
 import { UpdatePostDto } from '../dto/update-post.dto';
+import { SearchPostDto } from '../dto/search-post.dto';
 import { PostVisibility } from '../entities/post.entity';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
+import { Societe } from '../../societes/entities/societe.entity';
 
 @Controller('posts')
 export class PostController {
@@ -28,14 +34,15 @@ export class PostController {
   /**
    * Créer un nouveau post
    * POST /posts
+   * Nécessite authentification
    */
   @Post()
-  async create(@Body() createPostDto: CreatePostDto) {
-    // TODO: Récupérer l'utilisateur authentifié depuis le contexte (JWT)
-    // const currentUser = req.user;
-    const mockUser = { id: 1, type: 'User' } as any;
-
-    const post = await this.postService.create(createPostDto, mockUser);
+  @UseGuards(JwtAuthGuard)
+  async create(
+    @Body() createPostDto: CreatePostDto,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const post = await this.postService.create(createPostDto, currentUser);
     const { author, groupe } = await this.postService.findOne(post.id);
 
     return {
@@ -62,15 +69,16 @@ export class PostController {
   /**
    * Mettre à jour un post
    * PUT /posts/:id
+   * Nécessite authentification
    */
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updatePostDto: UpdatePostDto,
+    @CurrentUser() currentUser: User | Societe,
   ) {
-    const mockUser = { id: 1, type: 'User' } as any;
-
-    const post = await this.postService.update(id, updatePostDto, mockUser);
+    const post = await this.postService.update(id, updatePostDto, currentUser);
     const { author, groupe } = await this.postService.findOne(post.id);
 
     return {
@@ -83,13 +91,16 @@ export class PostController {
   /**
    * Supprimer un post
    * DELETE /posts/:id
+   * Nécessite authentification
    */
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    const mockUser = { id: 1, type: 'User' } as any;
-
-    await this.postService.remove(id, mockUser);
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    await this.postService.remove(id, currentUser);
 
     return {
       success: true,
@@ -103,16 +114,14 @@ export class PostController {
    * Nécessite authentification
    */
   @Get('feed/my-feed')
+  @UseGuards(JwtAuthGuard)
   async getMyFeed(
+    @CurrentUser() currentUser: User | Societe,
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
     @Query('onlyWithMedia') onlyWithMedia?: boolean,
   ) {
-    // TODO: Récupérer l'utilisateur authentifié depuis le contexte (JWT)
-    // const currentUser = req.user;
-    const mockUser = { id: 1, type: 'User' } as any;
-
-    const posts = await this.postService.getPersonalizedFeed(mockUser, {
+    const posts = await this.postService.getPersonalizedFeed(currentUser, {
       limit: limit || 20,
       offset: offset || 0,
       onlyWithMedia: onlyWithMedia === true,
@@ -173,23 +182,84 @@ export class PostController {
   /**
    * Rechercher des posts
    * GET /posts/search/query
+   *
+   * IMPORTANT: Au moins un paramètre de recherche est requis
+   *
+   * @example
+   * GET /posts/search/query?q=javascript&visibility=public
+   * GET /posts/search/query?authorId=5&authorType=User&hasMedia=true
+   * GET /posts/search/query?groupeId=10&isPinned=true
+   * GET /posts/search/query?startDate=2025-01-01&endDate=2025-01-31
    */
   @Get('search/query')
-  async search(
-    @Query('q') query?: string,
-    @Query('authorId') authorId?: number,
-    @Query('authorType') authorType?: string,
-    @Query('groupeId') groupeId?: number,
-    @Query('visibility') visibility?: PostVisibility,
-    @Query('hasMedia') hasMedia?: boolean,
-  ) {
+  async search(@Query() searchDto: SearchPostDto) {
+    // Vérifier que authorId et authorType sont fournis ensemble
+    if (searchDto.authorId && !searchDto.authorType) {
+      return {
+        success: false,
+        message: 'authorType est requis quand authorId est fourni',
+        data: [],
+        meta: {
+          hint: 'Utilisez authorId ET authorType ensemble (ex: authorId=3&authorType=User)',
+        },
+      };
+    }
+
+    if (searchDto.authorType && !searchDto.authorId) {
+      return {
+        success: false,
+        message: 'authorId est requis quand authorType est fourni',
+        data: [],
+        meta: {
+          hint: 'Utilisez authorId ET authorType ensemble (ex: authorId=3&authorType=User)',
+        },
+      };
+    }
+
+    // Vérifier qu'au moins un paramètre de recherche est fourni
+    const hasSearchCriteria =
+      searchDto.q ||
+      (searchDto.authorId && searchDto.authorType) ||
+      searchDto.groupeId ||
+      searchDto.societeId ||
+      searchDto.visibility ||
+      searchDto.hasMedia !== undefined ||
+      searchDto.isPinned !== undefined ||
+      searchDto.startDate ||
+      searchDto.endDate;
+
+    if (!hasSearchCriteria) {
+      return {
+        success: false,
+        message: 'Au moins un critère de recherche est requis',
+        data: [],
+        meta: {
+          count: 0,
+          availableFilters: [
+            'q (recherche texte)',
+            'authorId + authorType (les deux requis)',
+            'groupeId',
+            'societeId',
+            'visibility',
+            'hasMedia',
+            'isPinned',
+            'startDate',
+            'endDate',
+          ],
+        },
+      };
+    }
+
     const posts = await this.postService.search({
-      searchQuery: query,
-      authorId,
-      authorType,
-      groupeId,
-      visibility,
-      hasMedia: hasMedia === true,
+      searchQuery: searchDto.q,
+      authorId: searchDto.authorId,
+      authorType: searchDto.authorType,
+      groupeId: searchDto.groupeId,
+      visibility: searchDto.visibility,
+      hasMedia: searchDto.hasMedia,
+      isPinned: searchDto.isPinned,
+      startDate: searchDto.startDate ? new Date(searchDto.startDate) : undefined,
+      endDate: searchDto.endDate ? new Date(searchDto.endDate) : undefined,
     });
 
     return {
@@ -197,6 +267,18 @@ export class PostController {
       data: posts.map((post) => this.postMapper.toSimpleData(post)),
       meta: {
         count: posts.length,
+        filters: {
+          query: searchDto.q,
+          authorId: searchDto.authorId,
+          authorType: searchDto.authorType,
+          groupeId: searchDto.groupeId,
+          societeId: searchDto.societeId,
+          visibility: searchDto.visibility,
+          hasMedia: searchDto.hasMedia,
+          isPinned: searchDto.isPinned,
+          startDate: searchDto.startDate,
+          endDate: searchDto.endDate,
+        },
       },
     };
   }
@@ -252,12 +334,15 @@ export class PostController {
   /**
    * Épingler/désépingler un post
    * PUT /posts/:id/pin
+   * Nécessite authentification (et d'être admin du groupe/société)
    */
   @Put(':id/pin')
-  async togglePin(@Param('id', ParseIntPipe) id: number) {
-    const mockUser = { id: 1, type: 'User' } as any;
-
-    const post = await this.postService.togglePin(id, mockUser);
+  @UseGuards(JwtAuthGuard)
+  async togglePin(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const post = await this.postService.togglePin(id, currentUser);
 
     return {
       success: true,

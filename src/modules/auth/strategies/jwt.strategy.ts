@@ -37,29 +37,37 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    console.log('=== JWT STRATEGY DEBUG ===');
+    console.log('JWT Payload:', payload);
+
     const { sub, userType } = payload;
 
     // Validation du type d'utilisateur
     if (!['user', 'societe'].includes(userType)) {
+      console.log('JWT ERROR: Type d\'utilisateur invalide:', userType);
       throw new UnauthorizedException('Type d\'utilisateur invalide');
     }
 
     try {
       if (userType === 'user') {
         const user = await this.userService.findById(sub);
-        // Retourne l'utilisateur avec son type pour les guards
-        return { ...user, userType: 'user' };
+        console.log('JWT SUCCESS: User trouvé:', { id: user.id, nom: user.nom });
+        // Retourne l'utilisateur (entité TypeORM) directement
+        return user;
       }
 
       if (userType === 'societe') {
         const societe = await this.societeService.findById(sub);
-        // Retourne la société avec son type pour les guards
-        return { ...societe, userType: 'societe' };
+        console.log('JWT SUCCESS: Societe trouvée:', { id: societe.id, nom_societe: societe.nom_societe });
+        // Retourne la société (entité TypeORM) directement
+        return societe;
       }
     } catch (error) {
+      console.log('JWT ERROR: Erreur lors de la recherche de l\'utilisateur:', error.message);
       throw new UnauthorizedException('Token invalide ou utilisateur introuvable');
     }
 
+    console.log('JWT ERROR: Type d\'utilisateur invalide (fin)');
     throw new UnauthorizedException('Type d\'utilisateur invalide');
   }
 }

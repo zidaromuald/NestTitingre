@@ -9,13 +9,13 @@ export class InvitationSuiviRepository extends Repository<InvitationSuivi> {
     super(InvitationSuivi, dataSource.createEntityManager());
   }
 
-  async findInvitation(senderId: number, senderType: string, targetId: number, targetType: string): Promise<InvitationSuivi | null> {
+  async findInvitation(senderId: number, senderType: string, receiverId: number, receiverType: string): Promise<InvitationSuivi | null> {
     return this.findOne({
       where: {
         sender_id: senderId,
         sender_type: senderType,
-        target_id: targetId,
-        target_type: targetType
+        receiver_id: receiverId,
+        receiver_type: receiverType
       }
     });
   }
@@ -26,23 +26,23 @@ export class InvitationSuiviRepository extends Repository<InvitationSuivi> {
     return this.find({ where, order: { created_at: 'DESC' } });
   }
 
-  async findInvitationsRecues(targetId: number, targetType: string, status?: InvitationSuiviStatus): Promise<InvitationSuivi[]> {
-    const where: any = { target_id: targetId, target_type: targetType };
+  async findInvitationsRecues(receiverId: number, receiverType: string, status?: InvitationSuiviStatus): Promise<InvitationSuivi[]> {
+    const where: any = { receiver_id: receiverId, receiver_type: receiverType };
     if (status) where.status = status;
-    return this.find({ where, order: { created_at: 'DESC' }, relations: ['sender'] });
+    return this.find({ where, order: { created_at: 'DESC' } });
   }
 
-  async countInvitationsPending(targetId: number, targetType: string): Promise<number> {
-    return this.count({ where: { target_id: targetId, target_type: targetType, status: InvitationSuiviStatus.PENDING }});
+  async countInvitationsPending(receiverId: number, receiverType: string): Promise<number> {
+    return this.count({ where: { receiver_id: receiverId, receiver_type: receiverType, status: InvitationSuiviStatus.PENDING }});
   }
 
-  async hasInvitationPending(senderId: number, senderType: string, targetId: number, targetType: string): Promise<boolean> {
+  async hasInvitationPending(senderId: number, senderType: string, receiverId: number, receiverType: string): Promise<boolean> {
     return (await this.count({
       where: {
         sender_id: senderId,
         sender_type: senderType,
-        target_id: targetId,
-        target_type: targetType,
+        receiver_id: receiverId,
+        receiver_type: receiverType,
         status: InvitationSuiviStatus.PENDING
       }
     })) > 0;

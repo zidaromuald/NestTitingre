@@ -5,7 +5,8 @@ export interface UploadResponseDto {
   success: boolean;
   message: string;
   data: {
-    url: string;
+    path: string;     // Chemin relatif à stocker en BDD (ex: "uploads/images/photo.jpg")
+    url: string;      // URL complète pour affichage immédiat
     filename: string;
     size: number;
     mimetype: string;

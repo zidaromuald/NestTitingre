@@ -31,8 +31,11 @@ export class GroupeInvitationController {
     @Body() inviteDto: InviteMembreDto,
     @Request() req: any,
   ) {
-    const invitedByUserId = req.user.id;
-    return this.groupeService.inviteMembre(groupeId, inviteDto, invitedByUserId);
+    const inviter = {
+      id: req.user.id,
+      type: req.user.userType === 'societe' ? 'Societe' : 'User',
+    };
+    return this.groupeService.inviteMembre(groupeId, inviteDto, inviter);
   }
 
   /**

@@ -10,8 +10,4 @@ export class CreateCommentaireDto {
   @IsString()
   @MaxLength(5000)
   contenu: string;
-
-  // Ces champs seront remplis automatiquement par le contrôleur
-  commentable_id?: number;
-  commentable_type?: string;
 }

@@ -27,7 +27,7 @@ export class InvitationSuiviService {
    */
   async envoyerInvitation(senderId: number, senderType: string, dto: CreateInvitationSuiviDto): Promise<InvitationSuivi> {
     // Vérifier qu'on ne s'envoie pas à soi-même
-    if (dto.target_type === senderType && dto.target_id === senderId) {
+    if (dto.receiver_type === senderType && dto.receiver_id === senderId) {
       throw new BadRequestException('Vous ne pouvez pas vous suivre vous-même');
     }
 
@@ -41,28 +41,28 @@ export class InvitationSuiviService {
     }
 
     // Vérifier que la cible existe
-    if (dto.target_type === 'User') {
-      const user = await this.userRepo.findOne({ where: { id: dto.target_id }});
+    if (dto.receiver_type === 'User') {
+      const user = await this.userRepo.findOne({ where: { id: dto.receiver_id }});
       if (!user) throw new NotFoundException('Utilisateur cible introuvable');
     } else {
-      const societe = await this.societeRepo.findOne({ where: { id: dto.target_id }});
+      const societe = await this.societeRepo.findOne({ where: { id: dto.receiver_id }});
       if (!societe) throw new NotFoundException('Société cible introuvable');
     }
 
     // Vérifier si invitation déjà envoyée (PENDING)
-    const existingPending = await this.invitationSuiviRepository.hasInvitationPending(senderId, senderType, dto.target_id, dto.target_type);
+    const existingPending = await this.invitationSuiviRepository.hasInvitationPending(senderId, senderType, dto.receiver_id, dto.receiver_type);
     if (existingPending) throw new ConflictException('Invitation déjà envoyée en attente de réponse');
 
     // Vérifier si connexion mutuelle existe déjà
-    const alreadyConnected = await this.suivreRepository.isSuivant(senderId, senderType, dto.target_id, dto.target_type);
+    const alreadyConnected = await this.suivreRepository.isSuivant(senderId, senderType, dto.receiver_id, dto.receiver_type);
     if (alreadyConnected) throw new ConflictException('Vous êtes déjà connectés');
 
     // Créer l'invitation
     const invitation = this.invitationRepo.create({
       sender_id: senderId,
       sender_type: senderType,
-      target_id: dto.target_id,
-      target_type: dto.target_type,
+      receiver_id: dto.receiver_id,
+      receiver_type: dto.receiver_type,
       message: dto.message,
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 jours
     });
@@ -73,15 +73,17 @@ export class InvitationSuiviService {
   /**
    * Accepter une invitation → Crée 2 Suivre mutuels
    */
-  async accepterInvitation(invitationId: number, userId: number): Promise<{ invitation: InvitationSuivi; suivres: [Suivre, Suivre] }> {
+  async accepterInvitation(invitationId: number, userId: number, userType: string): Promise<{ invitation: InvitationSuivi; suivres: [Suivre, Suivre] }> {
     const invitation = await this.invitationRepo.findOne({ where: { id: invitationId }});
     if (!invitation) throw new NotFoundException('Invitation introuvable');
 
-    // Vérifier que userId est bien la cible (User ou représentant Societe)
-    if (invitation.target_type === 'User' && invitation.target_id !== userId) {
+    // Normaliser le userType reçu du JWT (lowercase) vers le format DB (capitalized)
+    const normalizedUserType = userType === 'user' ? 'User' : 'Societe';
+
+    // Vérifier que l'utilisateur connecté est bien le destinataire de l'invitation
+    if (invitation.receiver_id !== userId || invitation.receiver_type !== normalizedUserType) {
       throw new ForbiddenException('Cette invitation ne vous est pas destinée');
     }
-    // Pour Societe: vérifier que userId est un représentant (TODO: implémenter cette logique)
 
     // Vérifier que l'invitation peut être acceptée
     if (!invitation.canBeAccepted()) {
@@ -99,19 +101,19 @@ export class InvitationSuiviService {
       invitation.responded_at = new Date();
       await queryRunner.manager.save(invitation);
 
-      // 2. Créer Suivre A → B (sender suit target)
+      // 2. Créer Suivre A → B (sender suit receiver)
       const suivre1 = this.suivreRepo.create({
         user_id: invitation.sender_id,
         user_type: invitation.sender_type, // User ou Societe
-        followed_id: invitation.target_id,
-        followed_type: invitation.target_type, // User ou Societe
+        followed_id: invitation.receiver_id,
+        followed_type: invitation.receiver_type, // User ou Societe
       });
       const savedSuivre1 = await queryRunner.manager.save(suivre1);
 
-      // 3. Créer Suivre B → A (target suit sender - mutuel)
+      // 3. Créer Suivre B → A (receiver suit sender - mutuel)
       const suivre2 = this.suivreRepo.create({
-        user_id: invitation.target_id,
-        user_type: invitation.target_type, // User ou Societe
+        user_id: invitation.receiver_id,
+        user_type: invitation.receiver_type, // User ou Societe
         followed_id: invitation.sender_id,
         followed_type: invitation.sender_type, // User ou Societe
       });
@@ -130,11 +132,15 @@ export class InvitationSuiviService {
   /**
    * Refuser une invitation
    */
-  async refuserInvitation(invitationId: number, userId: number): Promise<InvitationSuivi> {
+  async refuserInvitation(invitationId: number, userId: number, userType: string): Promise<InvitationSuivi> {
     const invitation = await this.invitationRepo.findOne({ where: { id: invitationId }});
     if (!invitation) throw new NotFoundException('Invitation introuvable');
 
-    if (invitation.target_type === 'User' && invitation.target_id !== userId) {
+    // Normaliser le userType reçu du JWT (lowercase) vers le format DB (capitalized)
+    const normalizedUserType = userType === 'user' ? 'User' : 'Societe';
+
+    // Vérifier que l'utilisateur connecté est bien le destinataire de l'invitation
+    if (invitation.receiver_id !== userId || invitation.receiver_type !== normalizedUserType) {
       throw new ForbiddenException('Cette invitation ne vous est pas destinée');
     }
 
@@ -175,14 +181,14 @@ export class InvitationSuiviService {
   /**
    * Mes invitations reçues
    */
-  async getMesInvitationsRecues(userId: number, targetType: string, status?: InvitationSuiviStatus): Promise<InvitationSuivi[]> {
-    return this.invitationSuiviRepository.findInvitationsRecues(userId, targetType, status);
+  async getMesInvitationsRecues(userId: number, receiverType: string, status?: InvitationSuiviStatus): Promise<InvitationSuivi[]> {
+    return this.invitationSuiviRepository.findInvitationsRecues(userId, receiverType, status);
   }
 
   /**
    * Compter mes invitations en attente
    */
-  async countInvitationsPending(userId: number, targetType: string): Promise<number> {
-    return this.invitationSuiviRepository.countInvitationsPending(userId, targetType);
+  async countInvitationsPending(userId: number, receiverType: string): Promise<number> {
+    return this.invitationSuiviRepository.countInvitationsPending(userId, receiverType);
   }
 }

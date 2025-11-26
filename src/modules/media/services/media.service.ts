@@ -6,12 +6,19 @@ import { UploadResponseDto } from '../dto/upload-response.dto';
 @Injectable()
 export class MediaService {
   /**
-   * Construit l'URL publique du fichier uploadé
+   * Construit le chemin relatif du fichier uploadé
    */
-  private buildFileUrl(filename: string, type: MediaType): string {
-    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+  private buildFilePath(filename: string, type: MediaType): string {
     const typeFolder = `${type}s`; // image -> images, video -> videos, etc.
-    return `${baseUrl}/uploads/${typeFolder}/${filename}`;
+    return `uploads/${typeFolder}/${filename}`;
+  }
+
+  /**
+   * Construit l'URL publique complète du fichier uploadé
+   */
+  private buildFileUrl(path: string): string {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    return `${baseUrl}/${path}`;
   }
 
   /**
@@ -25,13 +32,15 @@ export class MediaService {
       throw new BadRequestException('Aucun fichier fourni');
     }
 
-    const fileUrl = this.buildFileUrl(file.filename, type);
+    const path = this.buildFilePath(file.filename, type);
+    const url = this.buildFileUrl(path);
 
     return {
       success: true,
       message: `${this.getTypeLabel(type)} uploadé(e) avec succès`,
       data: {
-        url: fileUrl,
+        path, // Chemin relatif à stocker en BDD
+        url,  // URL complète pour affichage immédiat
         filename: file.filename,
         size: file.size,
         mimetype: file.mimetype,

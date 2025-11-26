@@ -6,21 +6,21 @@ import { Societe } from '../../societes/entities/societe.entity';
 
 @Injectable()
 export class InvitationSuiviMapper {
-  toPublicData(invitation: InvitationSuivi, sender?: User | Societe, target?: User | Societe) {
+  toPublicData(invitation: InvitationSuivi, sender?: User | Societe, receiver?: User | Societe) {
     return {
       id: invitation.id,
       sender: sender ? this.mapEntity(sender, invitation.sender_type) : {
         id: invitation.sender_id,
         type: invitation.sender_type
       },
-      target: target ? this.mapEntity(target, invitation.target_type) : {
-        id: invitation.target_id,
-        type: invitation.target_type
+      receiver: receiver ? this.mapEntity(receiver, invitation.receiver_type) : {
+        id: invitation.receiver_id,
+        type: invitation.receiver_type
       },
       sender_id: invitation.sender_id,
       sender_type: invitation.sender_type,
-      target_id: invitation.target_id,
-      target_type: invitation.target_type,
+      receiver_id: invitation.receiver_id,
+      receiver_type: invitation.receiver_type,
       status: invitation.status,
       message: invitation.message,
       expires_at: invitation.expires_at,

@@ -1,7 +1,7 @@
 // modules/suivis/dto/create-invitation-suivi.dto.ts
 import { IsInt, IsNotEmpty, IsOptional, IsString, IsEnum, MaxLength } from 'class-validator';
 
-export enum InvitationTargetType {
+export enum InvitationReceiverType {
   USER = 'User',
   SOCIETE = 'Societe',
 }
@@ -9,11 +9,11 @@ export enum InvitationTargetType {
 export class CreateInvitationSuiviDto {
   @IsNotEmpty()
   @IsInt()
-  target_id: number;
+  receiver_id: number;
 
   @IsNotEmpty()
-  @IsEnum(InvitationTargetType)
-  target_type: InvitationTargetType;
+  @IsEnum(InvitationReceiverType)
+  receiver_type: InvitationReceiverType;
 
   @IsOptional()
   @IsString()

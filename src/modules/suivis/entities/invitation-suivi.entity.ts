@@ -26,9 +26,9 @@ export enum InvitationSuiviStatus {
  * 3b. Si DECLINED → Rien ne se passe
  */
 @Entity('invitations_suivi')
-@Index(['sender_id', 'sender_type', 'target_id', 'target_type'], { unique: true })
+@Index(['sender_id', 'sender_type', 'receiver_id', 'receiver_type'], { unique: true })
 @Index(['status']) // Propriété TypeScript (colonne 'statut' en base)
-@Index(['target_id', 'target_type'])
+@Index(['receiver_id', 'receiver_type'])
 @Index(['sender_id', 'sender_type'])
 export class InvitationSuivi {
   @PrimaryGeneratedColumn()
@@ -43,10 +43,10 @@ export class InvitationSuivi {
 
   // À qui l'invitation est envoyée (User OU Societe - polymorphique)
   @Column({ type: 'int' })
-  target_id: number;
+  receiver_id: number;
 
   @Column({ type: 'varchar', length: 100 })
-  target_type: string; // 'User' ou 'Societe'
+  receiver_type: string; // 'User' ou 'Societe'
 
   @Column({
     type: 'enum',
@@ -98,11 +98,11 @@ export class InvitationSuivi {
     return this.sender_type === 'Societe';
   }
 
-  isTargetUser(): boolean {
-    return this.target_type === 'User';
+  isReceiverUser(): boolean {
+    return this.receiver_type === 'User';
   }
 
-  isTargetSociete(): boolean {
-    return this.target_type === 'Societe';
+  isReceiverSociete(): boolean {
+    return this.receiver_type === 'Societe';
   }
 }

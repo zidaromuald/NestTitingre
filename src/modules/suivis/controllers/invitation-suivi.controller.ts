@@ -26,10 +26,19 @@ export class InvitationSuiviController {
     @Body() dto: CreateInvitationSuiviDto,
     @CurrentUser() user: any,
   ) {
-    const invitation = await this.invitationService.envoyerInvitation(user.id, user.userType, dto);
+    // Debug: logger les données reçues
+    console.log('=== DEBUG envoyerInvitation ===');
+    console.log('User:', { id: user.id, userType: user.userType });
+    console.log('DTO:', dto);
+
+    // Normaliser le userType: 'user' -> 'User', 'societe' -> 'Societe'
+    const senderType = user.userType === 'user' ? 'User' : 'Societe';
+    console.log('SenderType normalisé:', senderType);
+
+    const invitation = await this.invitationService.envoyerInvitation(user.id, senderType, dto);
     return {
       success: true,
-      message: `Invitation envoyée à ${dto.target_type === 'User' ? 'l\'utilisateur' : 'la société'}`,
+      message: `Invitation envoyée à ${dto.receiver_type === 'User' ? 'l\'utilisateur' : 'la société'}`,
       data: this.invitationMapper.toPublicData(invitation),
     };
   }
@@ -43,7 +52,7 @@ export class InvitationSuiviController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: any,
   ) {
-    const { invitation, suivres } = await this.invitationService.accepterInvitation(id, user.id);
+    const { invitation, suivres } = await this.invitationService.accepterInvitation(id, user.id, user.userType);
     return {
       success: true,
       message: 'Invitation acceptée. Vous êtes maintenant connectés !',
@@ -63,7 +72,7 @@ export class InvitationSuiviController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: any,
   ) {
-    const invitation = await this.invitationService.refuserInvitation(id, user.id);
+    const invitation = await this.invitationService.refuserInvitation(id, user.id, user.userType);
     return {
       success: true,
       message: 'Invitation refusée',
@@ -94,7 +103,8 @@ export class InvitationSuiviController {
     @Query('status') status?: InvitationSuiviStatus,
     @CurrentUser() user?: any,
   ) {
-    const invitations = await this.invitationService.getMesInvitationsEnvoyees(user.id, user.userType, status);
+    const senderType = user.userType === 'user' ? 'User' : 'Societe';
+    const invitations = await this.invitationService.getMesInvitationsEnvoyees(user.id, senderType, status);
     const data = invitations.map(inv => this.invitationMapper.toPublicData(inv));
     return { success: true, data, meta: { count: data.length, status: status || 'all' }};
   }
@@ -108,7 +118,8 @@ export class InvitationSuiviController {
     @Query('status') status?: InvitationSuiviStatus,
     @CurrentUser() user?: any,
   ) {
-    const invitations = await this.invitationService.getMesInvitationsRecues(user.id, user.userType, status);
+    const receiverType = user.userType === 'user' ? 'User' : 'Societe';
+    const invitations = await this.invitationService.getMesInvitationsRecues(user.id, receiverType, status);
     const data = invitations.map(inv => this.invitationMapper.toPublicData(inv));
     return { success: true, data, meta: { count: data.length, status: status || 'all' }};
   }
@@ -119,7 +130,8 @@ export class InvitationSuiviController {
    */
   @Get('pending/count')
   async countInvitationsPending(@CurrentUser() user?: any) {
-    const count = await this.invitationService.countInvitationsPending(user.id, user.userType);
+    const receiverType = user.userType === 'user' ? 'User' : 'Societe';
+    const count = await this.invitationService.countInvitationsPending(user.id, receiverType);
     return { success: true, data: { count }};
   }
 }

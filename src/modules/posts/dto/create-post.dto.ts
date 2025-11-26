@@ -10,6 +10,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { PostVisibility } from '../entities/post.entity';
+import { IsUploadedFile } from '../../../common/validators/is-uploaded-file.validator';
 
 export class CreatePostDto {
   @IsOptional()
@@ -30,29 +31,28 @@ export class CreatePostDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @IsUploadedFile()
   images?: string[];
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @IsUploadedFile()
   videos?: string[];
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @IsUploadedFile()
   audios?: string[];
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @IsUploadedFile()
   documents?: string[];
 
   @IsOptional()
   @IsEnum(PostVisibility)
   visibility?: PostVisibility;
-
-  // Ces champs seront remplis automatiquement par le contrôleur
-  // en fonction de l'utilisateur ou société connecté(e)
-  posted_by_id?: number;
-  posted_by_type?: string;
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PostService } from './services/post.service';
 import { PostPolymorphicService } from './services/post-polymorphic.service';
+import { PostPermissionService } from './services/post-permission.service';
 import { LikePolymorphicService } from './services/like-polymorphic.service';
 import { CommentairePolymorphicService } from './services/commentaire-polymorphic.service';
 import { PostController } from './controllers/post.controller';
@@ -13,6 +14,9 @@ import { Commentaire } from './entities/commentaire.entity';
 import { User } from '../users/entities/user.entity';
 import { Societe } from '../societes/entities/societe.entity';
 import { Groupe } from '../groupes/entities/groupe.entity';
+import { GroupeUser } from '../groupes/entities/groupe-user.entity';
+import { SocieteUser } from '../societes/entities/societe-user.entity';
+import { InvitationSuivi } from '../suivis/entities/invitation-suivi.entity';
 import { PostRepository } from './repositories/post.repository';
 import { PostMapper } from './mappers/post.mapper';
 
@@ -25,12 +29,16 @@ import { PostMapper } from './mappers/post.mapper';
       User,
       Societe,
       Groupe,
+      GroupeUser,
+      SocieteUser,
+      InvitationSuivi,
       PostRepository,
     ]),
   ],
   providers: [
     PostService,
     PostPolymorphicService,
+    PostPermissionService,
     LikePolymorphicService,
     CommentairePolymorphicService,
     PostRepository,
@@ -40,6 +48,7 @@ import { PostMapper } from './mappers/post.mapper';
   exports: [
     PostService,
     PostPolymorphicService,
+    PostPermissionService,
     LikePolymorphicService,
     CommentairePolymorphicService,
     PostRepository,

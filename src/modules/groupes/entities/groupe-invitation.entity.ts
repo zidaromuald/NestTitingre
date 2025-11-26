@@ -9,7 +9,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { Groupe } from './groupe.entity';
+import { Groupe, MembreRole } from './groupe.entity';
 import { User } from '../../users/entities/user.entity';
 
 export enum InvitationStatus {
@@ -52,6 +52,14 @@ export class GroupeInvitation {
 
   @Column({ type: 'text', nullable: true })
   message: string;
+
+  @Column({
+    type: 'varchar',
+    length: 100,
+    default: 'membre',
+    nullable: true,
+  })
+  role: string; // Role à attribuer au membre une fois l'invitation acceptée
 
   @Column({ type: 'timestamp', nullable: true })
   expires_at: Date;
