@@ -1,11 +1,16 @@
 // modules/partenariats/controllers/information-partenaire.controller.ts
-import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { InformationPartenaireService } from '../services/information-partenaire.service';
 import { InformationPartenaireMapper } from '../mappers/information-partenaire.mapper';
 import { CreateInformationPartenaireDto } from '../dto/create-information-partenaire.dto';
 import { UpdateInformationPartenaireDto } from '../dto/update-information-partenaire.dto';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
+import { Societe } from '../../societes/entities/societe.entity';
 
 @Controller('informations-partenaires')
+@UseGuards(JwtAuthGuard)
 export class InformationPartenaireController {
   constructor(
     private readonly informationService: InformationPartenaireService,
@@ -17,10 +22,13 @@ export class InformationPartenaireController {
    * POST /informations-partenaires
    */
   @Post()
-  async createInformation(@Body() dto: CreateInformationPartenaireDto) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
-    const information = await this.informationService.createInformation(mockUserId, mockUserType, dto);
+  async createInformation(
+    @Body() dto: CreateInformationPartenaireDto,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const information = await this.informationService.createInformation(userId, userType, dto);
     return {
       success: true,
       message: 'Information partenaire créée avec succès',
@@ -33,10 +41,13 @@ export class InformationPartenaireController {
    * GET /informations-partenaires/page/:pageId
    */
   @Get('page/:pageId')
-  async getInformationsForPage(@Param('pageId', ParseIntPipe) pageId: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
-    const informations = await this.informationService.getInformationsForPage(pageId, mockUserId, mockUserType);
+  async getInformationsForPage(
+    @Param('pageId', ParseIntPipe) pageId: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const informations = await this.informationService.getInformationsForPage(pageId, userId, userType);
     const data = informations.map((i) => this.informationMapper.toPublicData(i));
     return {
       success: true,
@@ -50,10 +61,13 @@ export class InformationPartenaireController {
    * GET /informations-partenaires/:id
    */
   @Get(':id')
-  async getInformationById(@Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
-    const information = await this.informationService.getInformationById(id, mockUserId, mockUserType);
+  async getInformationById(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const information = await this.informationService.getInformationById(id, userId, userType);
     return {
       success: true,
       data: this.informationMapper.toPublicData(information),
@@ -65,10 +79,14 @@ export class InformationPartenaireController {
    * PUT /informations-partenaires/:id
    */
   @Put(':id')
-  async updateInformation(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInformationPartenaireDto) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
-    const information = await this.informationService.updateInformation(id, mockUserId, mockUserType, dto);
+  async updateInformation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateInformationPartenaireDto,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const information = await this.informationService.updateInformation(id, userId, userType, dto);
     return {
       success: true,
       message: 'Information modifiée avec succès',
@@ -81,10 +99,13 @@ export class InformationPartenaireController {
    * DELETE /informations-partenaires/:id
    */
   @Delete(':id')
-  async deleteInformation(@Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
-    await this.informationService.deleteInformation(id, mockUserId, mockUserType);
+  async deleteInformation(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    await this.informationService.deleteInformation(id, userId, userType);
     return {
       success: true,
       message: 'Information supprimée avec succès',

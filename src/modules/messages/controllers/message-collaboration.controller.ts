@@ -1,10 +1,15 @@
 // modules/messages/controllers/message-collaboration.controller.ts
-import { Controller, Get, Post, Put, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { MessageCollaborationService } from '../services/message-collaboration.service';
 import { MessageCollaborationMapper } from '../mappers/message-collaboration.mapper';
 import { SendMessageDto } from '../dto/send-message.dto';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
+import { Societe } from '../../societes/entities/societe.entity';
 
 @Controller('messages')
+@UseGuards(JwtAuthGuard)
 export class MessageCollaborationController {
   constructor(
     private readonly messageService: MessageCollaborationService,
@@ -16,11 +21,15 @@ export class MessageCollaborationController {
    * POST /messages/conversations/:conversationId
    */
   @Post('conversations/:conversationId')
-  async sendMessage(@Param('conversationId', ParseIntPipe) conversationId: number, @Body() dto: SendMessageDto) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async sendMessage(
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Body() dto: SendMessageDto,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const message = await this.messageService.sendMessage(conversationId, mockUserId, mockUserType, dto);
+    const message = await this.messageService.sendMessage(conversationId, userId, userType, dto);
 
     return {
       success: true,
@@ -34,11 +43,14 @@ export class MessageCollaborationController {
    * GET /messages/conversations/:conversationId
    */
   @Get('conversations/:conversationId')
-  async getMessagesByConversation(@Param('conversationId', ParseIntPipe) conversationId: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async getMessagesByConversation(
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const messages = await this.messageService.getMessagesByConversation(conversationId, mockUserId, mockUserType);
+    const messages = await this.messageService.getMessagesByConversation(conversationId, userId, userType);
     const data = messages.map((m) => this.messageMapper.toPublicData(m));
 
     return {
@@ -53,11 +65,14 @@ export class MessageCollaborationController {
    * PUT /messages/:id/read
    */
   @Put(':id/read')
-  async markMessageAsRead(@Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async markMessageAsRead(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const message = await this.messageService.markMessageAsRead(id, mockUserId, mockUserType);
+    const message = await this.messageService.markMessageAsRead(id, userId, userType);
 
     return {
       success: true,
@@ -71,11 +86,14 @@ export class MessageCollaborationController {
    * PUT /messages/conversations/:conversationId/read-all
    */
   @Put('conversations/:conversationId/read-all')
-  async markAllAsRead(@Param('conversationId', ParseIntPipe) conversationId: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async markAllAsRead(
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    await this.messageService.markAllMessagesAsRead(conversationId, mockUserId, mockUserType);
+    await this.messageService.markAllMessagesAsRead(conversationId, userId, userType);
 
     return {
       success: true,
@@ -88,11 +106,11 @@ export class MessageCollaborationController {
    * GET /messages/unread/count
    */
   @Get('unread/count')
-  async countUnreadMessages() {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async countUnreadMessages(@CurrentUser() currentUser: User | Societe) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const count = await this.messageService.countTotalUnread(mockUserId, mockUserType);
+    const count = await this.messageService.countTotalUnread(userId, userType);
 
     return {
       success: true,
@@ -105,11 +123,14 @@ export class MessageCollaborationController {
    * GET /messages/conversations/:conversationId/unread
    */
   @Get('conversations/:conversationId/unread')
-  async getUnreadMessages(@Param('conversationId', ParseIntPipe) conversationId: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async getUnreadMessages(
+    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const messages = await this.messageService.getUnreadMessages(conversationId, mockUserId, mockUserType);
+    const messages = await this.messageService.getUnreadMessages(conversationId, userId, userType);
     const data = messages.map((m) => this.messageMapper.toPublicData(m));
 
     return {

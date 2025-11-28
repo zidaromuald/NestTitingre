@@ -1,11 +1,16 @@
 // modules/messages/controllers/conversation.controller.ts
-import { Controller, Get, Post, Put, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { ConversationService } from '../services/conversation.service';
 import { ConversationMapper } from '../mappers/conversation.mapper';
 import { MessageCollaborationService } from '../services/message-collaboration.service';
 import { CreateConversationDto } from '../dto/create-conversation.dto';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
+import { Societe } from '../../societes/entities/societe.entity';
 
 @Controller('conversations')
+@UseGuards(JwtAuthGuard)
 export class ConversationController {
   constructor(
     private readonly conversationService: ConversationService,
@@ -18,16 +23,19 @@ export class ConversationController {
    * POST /conversations
    */
   @Post()
-  async createOrGetConversation(@Body() dto: CreateConversationDto) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async createOrGetConversation(
+    @Body() dto: CreateConversationDto,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const conversation = await this.conversationService.createOrGetConversation(mockUserId, mockUserType, dto);
+    const conversation = await this.conversationService.createOrGetConversation(userId, userType, dto);
 
     return {
       success: true,
       message: 'Conversation créée ou récupérée avec succès',
-      data: this.conversationMapper.toPublicData(conversation),
+      data: this.conversationMapper.toPublicData(conversation, undefined, undefined, undefined, userId, userType),
     };
   }
 
@@ -36,17 +44,17 @@ export class ConversationController {
    * GET /conversations
    */
   @Get()
-  async getMyConversations() {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async getMyConversations(@CurrentUser() currentUser: User | Societe) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
     const conversationsWithUnread = await this.conversationService.getConversationsForParticipant(
-      mockUserId,
-      mockUserType,
+      userId,
+      userType,
     );
 
     const data = conversationsWithUnread.map(({ conversation, unreadCount }) =>
-      this.conversationMapper.toPublicData(conversation, undefined, undefined, unreadCount),
+      this.conversationMapper.toPublicData(conversation, undefined, undefined, unreadCount, userId, userType),
     );
 
     return {
@@ -61,12 +69,12 @@ export class ConversationController {
    * GET /conversations/archived
    */
   @Get('archived')
-  async getArchivedConversations() {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async getArchivedConversations(@CurrentUser() currentUser: User | Societe) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const conversations = await this.conversationService.getArchivedConversations(mockUserId, mockUserType);
-    const data = conversations.map((c) => this.conversationMapper.toPublicData(c));
+    const conversations = await this.conversationService.getArchivedConversations(userId, userType);
+    const data = conversations.map((c) => this.conversationMapper.toPublicData(c, undefined, undefined, undefined, userId, userType));
 
     return {
       success: true,
@@ -80,11 +88,11 @@ export class ConversationController {
    * GET /conversations/count
    */
   @Get('count')
-  async countConversations() {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async countConversations(@CurrentUser() currentUser: User | Societe) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const count = await this.conversationService.countActiveConversations(mockUserId, mockUserType);
+    const count = await this.conversationService.countActiveConversations(userId, userType);
 
     return {
       success: true,
@@ -97,17 +105,20 @@ export class ConversationController {
    * GET /conversations/:id
    */
   @Get(':id')
-  async getConversationById(@Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async getConversationById(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const conversation = await this.conversationService.getConversationById(id, mockUserId, mockUserType);
+    const conversation = await this.conversationService.getConversationById(id, userId, userType);
 
-    const unreadCount = await this.messageService.countUnreadInConversation(id, mockUserId, mockUserType);
+    const unreadCount = await this.messageService.countUnreadInConversation(id, userId, userType);
 
     return {
       success: true,
-      data: this.conversationMapper.toPublicData(conversation, undefined, undefined, unreadCount),
+      data: this.conversationMapper.toPublicData(conversation, undefined, undefined, unreadCount, userId, userType),
     };
   }
 
@@ -116,16 +127,19 @@ export class ConversationController {
    * PUT /conversations/:id/archive
    */
   @Put(':id/archive')
-  async archiveConversation(@Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async archiveConversation(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const conversation = await this.conversationService.archiveConversation(id, mockUserId, mockUserType);
+    const conversation = await this.conversationService.archiveConversation(id, userId, userType);
 
     return {
       success: true,
       message: 'Conversation archivée avec succès',
-      data: this.conversationMapper.toPublicData(conversation),
+      data: this.conversationMapper.toPublicData(conversation, undefined, undefined, undefined, userId, userType),
     };
   }
 
@@ -134,16 +148,19 @@ export class ConversationController {
    * PUT /conversations/:id/unarchive
    */
   @Put(':id/unarchive')
-  async unarchiveConversation(@Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
+  async unarchiveConversation(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const conversation = await this.conversationService.unarchiveConversation(id, mockUserId, mockUserType);
+    const conversation = await this.conversationService.unarchiveConversation(id, userId, userType);
 
     return {
       success: true,
       message: 'Conversation désarchivée avec succès',
-      data: this.conversationMapper.toPublicData(conversation),
+      data: this.conversationMapper.toPublicData(conversation, undefined, undefined, undefined, userId, userType),
     };
   }
 }

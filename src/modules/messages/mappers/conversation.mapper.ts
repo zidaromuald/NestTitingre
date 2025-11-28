@@ -11,6 +11,8 @@ export class ConversationMapper {
     participant1?: User | Societe,
     participant2?: User | Societe,
     unreadCount?: number,
+    currentUserId?: number,
+    currentUserType?: string,
   ) {
     return {
       id: conversation.id,
@@ -28,7 +30,9 @@ export class ConversationMapper {
           },
       titre: conversation.titre,
       dernier_message_at: conversation.dernier_message_at,
-      is_archived: conversation.is_archived,
+      is_archived: currentUserId && currentUserType
+        ? conversation.isArchivedFor(currentUserId, currentUserType)
+        : false,
       metadata: conversation.metadata,
       created_at: conversation.created_at,
       updated_at: conversation.updated_at,
@@ -36,7 +40,12 @@ export class ConversationMapper {
     };
   }
 
-  toListData(conversation: Conversation, unreadCount?: number) {
+  toListData(
+    conversation: Conversation,
+    unreadCount?: number,
+    currentUserId?: number,
+    currentUserType?: string,
+  ) {
     return {
       id: conversation.id,
       participant1_id: conversation.participant1_id,
@@ -45,7 +54,9 @@ export class ConversationMapper {
       participant2_type: conversation.participant2_type,
       titre: conversation.titre,
       dernier_message_at: conversation.dernier_message_at,
-      is_archived: conversation.is_archived,
+      is_archived: currentUserId && currentUserType
+        ? conversation.isArchivedFor(currentUserId, currentUserType)
+        : false,
       created_at: conversation.created_at,
       unread_count: unreadCount || 0,
     };

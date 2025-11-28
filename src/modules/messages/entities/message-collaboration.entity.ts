@@ -25,7 +25,7 @@ export enum MessageCollaborationStatut {
   ARCHIVED = 'archived',
 }
 
-@Entity('message_collaborations')
+@Entity('messages_collaboration')
 @Index(['conversation_id'])
 @Index(['transaction_collaboration_id'])
 @Index(['sender_id', 'sender_type'])

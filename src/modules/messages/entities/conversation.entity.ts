@@ -34,11 +34,14 @@ export class Conversation {
   @Column({ type: 'varchar', length: 255, nullable: true })
   titre: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', nullable: true, name: 'last_message_at' })
   dernier_message_at: Date;
 
-  @Column({ type: 'boolean', default: false })
-  is_archived: boolean;
+  @Column({ type: 'boolean', default: false, name: 'participant1_archived' })
+  participant1_archived: boolean;
+
+  @Column({ type: 'boolean', default: false, name: 'participant2_archived' })
+  participant2_archived: boolean;
 
   @Column({ type: 'json', nullable: true })
   metadata: Record<string, any>;
@@ -88,5 +91,55 @@ export class Conversation {
     }
 
     return null;
+  }
+
+  isArchivedFor(entityId: number, entityType: string): boolean {
+    if (
+      this.participant1_id === entityId &&
+      this.participant1_type === entityType
+    ) {
+      return this.participant1_archived;
+    }
+
+    if (
+      this.participant2_id === entityId &&
+      this.participant2_type === entityType
+    ) {
+      return this.participant2_archived;
+    }
+
+    return false;
+  }
+
+  archiveFor(entityId: number, entityType: string): void {
+    if (
+      this.participant1_id === entityId &&
+      this.participant1_type === entityType
+    ) {
+      this.participant1_archived = true;
+    }
+
+    if (
+      this.participant2_id === entityId &&
+      this.participant2_type === entityType
+    ) {
+      this.participant2_archived = true;
+    }
+  }
+
+  unarchiveFor(entityId: number, entityType: string): void {
+    if (
+      this.participant1_id === entityId &&
+      this.participant1_type === entityType
+    ) {
+      this.participant1_archived = false;
+    }
+
+    if (
+      this.participant2_id === entityId &&
+      this.participant2_type === entityType
+    ) {
+      this.participant2_archived = false;
+    }
   }
 }

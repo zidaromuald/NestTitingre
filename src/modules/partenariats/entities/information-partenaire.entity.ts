@@ -12,8 +12,8 @@ import {
 import { PagePartenariat } from './page-partenariat.entity';
 
 export enum PartenaireType {
-  USER = 'User',
-  SOCIETE = 'Societe',
+  USER = 'USER',
+  SOCIETE = 'SOCIETE',
 }
 
 export enum ModifiablePar {
@@ -227,9 +227,9 @@ export class InformationPartenaire {
   canBeModifiedByOwner(actorId: number, actorType: 'User' | 'Societe'): boolean {
     if (!this.pagePartenariat?.abonnement) return false;
 
-    // Vérifier que l'acteur est bien le propriétaire de cette information
+    // Vérifier que l'acteur est bien le créateur de cette information
     const isOwner =
-      this.partenaire_type === PartenaireType[actorType.toUpperCase() as keyof typeof PartenaireType] &&
+      this.creee_par === PartenaireType[actorType.toUpperCase() as keyof typeof PartenaireType] &&
       this.partenaire_id === actorId;
 
     return isOwner;

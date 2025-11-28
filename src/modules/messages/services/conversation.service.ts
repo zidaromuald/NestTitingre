@@ -1,20 +1,45 @@
 // modules/messages/services/conversation.service.ts
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Conversation } from '../entities/conversation.entity';
 import { ConversationRepository } from '../repositories/conversation.repository';
 import { MessageCollaborationRepository } from '../repositories/message-collaboration.repository';
 import { CreateConversationDto } from '../dto/create-conversation.dto';
+import { User } from '../../users/entities/user.entity';
+import { Societe } from '../../societes/entities/societe.entity';
 
 @Injectable()
 export class ConversationService {
   constructor(
     @InjectRepository(Conversation)
     private readonly conversationRepo: Repository<Conversation>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(Societe)
+    private readonly societeRepo: Repository<Societe>,
     private readonly conversationRepository: ConversationRepository,
     private readonly messageRepository: MessageCollaborationRepository,
   ) {}
+
+  /**
+   * Vérifier qu'un participant existe dans la base de données
+   */
+  private async validateParticipantExists(participantId: number, participantType: string): Promise<void> {
+    if (participantType === 'User') {
+      const user = await this.userRepo.findOne({ where: { id: participantId } });
+      if (!user) {
+        throw new BadRequestException(`L'utilisateur avec l'ID ${participantId} n'existe pas`);
+      }
+    } else if (participantType === 'Societe') {
+      const societe = await this.societeRepo.findOne({ where: { id: participantId } });
+      if (!societe) {
+        throw new BadRequestException(`La société avec l'ID ${participantId} n'existe pas`);
+      }
+    } else {
+      throw new BadRequestException(`Type de participant invalide: ${participantType}`);
+    }
+  }
 
   /**
    * Créer ou récupérer une conversation existante entre deux participants
@@ -35,6 +60,9 @@ export class ConversationService {
     if (existing) {
       return existing;
     }
+
+    // Valider que le participant2 existe
+    await this.validateParticipantExists(dto.participant2_id, dto.participant2_type);
 
     // Créer nouvelle conversation
     const conversation = this.conversationRepo.create({
@@ -114,7 +142,7 @@ export class ConversationService {
   ): Promise<Conversation> {
     const conversation = await this.getConversationById(id, participantId, participantType);
 
-    conversation.is_archived = true;
+    conversation.archiveFor(participantId, participantType);
     return this.conversationRepo.save(conversation);
   }
 
@@ -128,7 +156,7 @@ export class ConversationService {
   ): Promise<Conversation> {
     const conversation = await this.getConversationById(id, participantId, participantType);
 
-    conversation.is_archived = false;
+    conversation.unarchiveFor(participantId, participantType);
     return this.conversationRepo.save(conversation);
   }
 

@@ -1,9 +1,11 @@
 // modules/partenariats/dto/create-transaction-partenariat.dto.ts
-import { IsNotEmpty, IsString, IsInt, IsDecimal, IsDateString, IsOptional, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsInt, IsNumber, IsDateString, IsOptional, IsEnum } from 'class-validator';
+import { Type } from 'class-transformer';
 import { TransactionPartenaritStatut } from '../entities/transaction-partenariat.entity';
 
 export class CreateTransactionPartenaritDto {
   @IsNotEmpty()
+  @Type(() => Number)
   @IsInt()
   page_partenariat_id: number;
 
@@ -12,11 +14,13 @@ export class CreateTransactionPartenaritDto {
   produit: string;
 
   @IsNotEmpty()
+  @Type(() => Number)
   @IsInt()
   quantite: number;
 
   @IsNotEmpty()
-  @IsDecimal()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Le prix unitaire doit être un nombre valide' })
   prix_unitaire: number;
 
   @IsNotEmpty()

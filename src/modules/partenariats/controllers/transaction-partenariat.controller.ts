@@ -1,12 +1,17 @@
 // modules/partenariats/controllers/transaction-partenariat.controller.ts
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseIntPipe, UseGuards, ForbiddenException } from '@nestjs/common';
 import { TransactionPartenaritService } from '../services/transaction-partenariat.service';
 import { TransactionPartenaritMapper } from '../mappers/transaction-partenariat.mapper';
 import { CreateTransactionPartenaritDto } from '../dto/create-transaction-partenariat.dto';
 import { UpdateTransactionPartenaritDto } from '../dto/update-transaction-partenariat.dto';
 import { ValidateTransactionDto } from '../dto/validate-transaction.dto';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
+import { Societe } from '../../societes/entities/societe.entity';
 
 @Controller('transactions-partenariat')
+@UseGuards(JwtAuthGuard)
 export class TransactionPartenaritController {
   constructor(
     private readonly transactionService: TransactionPartenaritService,
@@ -18,9 +23,17 @@ export class TransactionPartenaritController {
    * POST /transactions-partenariat
    */
   @Post()
-  async createTransaction(@Body() dto: CreateTransactionPartenaritDto) {
-    const mockSocieteId = 1; // TODO: JWT
-    const transaction = await this.transactionService.createTransaction(mockSocieteId, dto);
+  async createTransaction(
+    @Body() dto: CreateTransactionPartenaritDto,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    // Vérifier que c'est une Societe
+    if (currentUser instanceof User) {
+      throw new ForbiddenException('Seule la Société peut créer des transactions');
+    }
+
+    const societeId = currentUser.id;
+    const transaction = await this.transactionService.createTransaction(societeId, dto);
     return {
       success: true,
       message: 'Transaction créée avec succès',
@@ -33,9 +46,17 @@ export class TransactionPartenaritController {
    * GET /transactions-partenariat/page/:pageId
    */
   @Get('page/:pageId')
-  async getTransactionsForPage(@Param('pageId', ParseIntPipe) pageId: number) {
-    const mockSocieteId = 1; // TODO: JWT
-    const transactions = await this.transactionService.getTransactionsForSociete(mockSocieteId, pageId);
+  async getTransactionsForPage(
+    @Param('pageId', ParseIntPipe) pageId: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    // Vérifier que c'est une Societe
+    if (currentUser instanceof User) {
+      throw new ForbiddenException('Seule la Société peut accéder à cette route. Les Users doivent utiliser /transactions-partenariat/pending');
+    }
+
+    const societeId = currentUser.id;
+    const transactions = await this.transactionService.getTransactionsForSociete(societeId, pageId);
     const data = transactions.map((t) => this.transactionMapper.toPublicData(t));
     return {
       success: true,
@@ -49,9 +70,14 @@ export class TransactionPartenaritController {
    * GET /transactions-partenariat/pending
    */
   @Get('pending')
-  async getPendingTransactions() {
-    const mockUserId = 1; // TODO: JWT
-    const transactions = await this.transactionService.getPendingTransactionsForUser(mockUserId);
+  async getPendingTransactions(@CurrentUser() currentUser: User | Societe) {
+    // Vérifier que c'est un User
+    if (!(currentUser instanceof User)) {
+      throw new ForbiddenException('Seul un User peut accéder aux transactions en attente de validation');
+    }
+
+    const userId = currentUser.id;
+    const transactions = await this.transactionService.getPendingTransactionsForUser(userId);
     const data = transactions.map((t) => this.transactionMapper.toPublicData(t));
     return {
       success: true,
@@ -65,9 +91,14 @@ export class TransactionPartenaritController {
    * GET /transactions-partenariat/pending/count
    */
   @Get('pending/count')
-  async countPending() {
-    const mockUserId = 1; // TODO: JWT
-    const count = await this.transactionService.countPendingForUser(mockUserId);
+  async countPending(@CurrentUser() currentUser: User | Societe) {
+    // Vérifier que c'est un User
+    if (!(currentUser instanceof User)) {
+      throw new ForbiddenException('Seul un User peut compter les transactions en attente');
+    }
+
+    const userId = currentUser.id;
+    const count = await this.transactionService.countPendingForUser(userId);
     return {
       success: true,
       data: { count },
@@ -79,10 +110,13 @@ export class TransactionPartenaritController {
    * GET /transactions-partenariat/:id
    */
   @Get(':id')
-  async getTransactionById(@Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User' as 'User' | 'Societe'; // TODO: JWT
-    const transaction = await this.transactionService.getTransactionById(id, mockUserId, mockUserType);
+  async getTransactionById(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const transaction = await this.transactionService.getTransactionById(id, userId, userType);
     return {
       success: true,
       data: this.transactionMapper.toPublicData(transaction),
@@ -94,9 +128,18 @@ export class TransactionPartenaritController {
    * PUT /transactions-partenariat/:id
    */
   @Put(':id')
-  async updateTransaction(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTransactionPartenaritDto) {
-    const mockSocieteId = 1; // TODO: JWT
-    const transaction = await this.transactionService.updateTransaction(id, mockSocieteId, dto);
+  async updateTransaction(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTransactionPartenaritDto,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    // Vérifier que c'est une Societe
+    if (currentUser instanceof User) {
+      throw new ForbiddenException('Seule la Société peut modifier des transactions');
+    }
+
+    const societeId = currentUser.id;
+    const transaction = await this.transactionService.updateTransaction(id, societeId, dto);
     return {
       success: true,
       message: 'Transaction modifiée avec succès',
@@ -109,9 +152,18 @@ export class TransactionPartenaritController {
    * PUT /transactions-partenariat/:id/validate
    */
   @Put(':id/validate')
-  async validateTransaction(@Param('id', ParseIntPipe) id: number, @Body() dto: ValidateTransactionDto) {
-    const mockUserId = 1; // TODO: JWT
-    const transaction = await this.transactionService.validateTransaction(id, mockUserId, dto);
+  async validateTransaction(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ValidateTransactionDto,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    // Vérifier que c'est un User
+    if (!(currentUser instanceof User)) {
+      throw new ForbiddenException('Seul un User peut valider des transactions');
+    }
+
+    const userId = currentUser.id;
+    const transaction = await this.transactionService.validateTransaction(id, userId, dto);
     return {
       success: true,
       message: 'Transaction validée avec succès',
@@ -124,9 +176,17 @@ export class TransactionPartenaritController {
    * DELETE /transactions-partenariat/:id
    */
   @Delete(':id')
-  async deleteTransaction(@Param('id', ParseIntPipe) id: number) {
-    const mockSocieteId = 1; // TODO: JWT
-    await this.transactionService.deleteTransaction(id, mockSocieteId);
+  async deleteTransaction(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    // Vérifier que c'est une Societe
+    if (currentUser instanceof User) {
+      throw new ForbiddenException('Seule la Société peut supprimer des transactions');
+    }
+
+    const societeId = currentUser.id;
+    await this.transactionService.deleteTransaction(id, societeId);
     return {
       success: true,
       message: 'Transaction supprimée avec succès',

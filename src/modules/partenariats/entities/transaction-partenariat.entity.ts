@@ -156,7 +156,19 @@ export class TransactionPartenariat {
 
   getDuree(): number {
     // Retourne la durée en jours
-    const diff = this.date_fin.getTime() - this.date_debut.getTime();
+    if (!this.date_debut || !this.date_fin) {
+      return 0;
+    }
+
+    const debut = this.date_debut instanceof Date ? this.date_debut : new Date(this.date_debut);
+    const fin = this.date_fin instanceof Date ? this.date_fin : new Date(this.date_fin);
+
+    // Vérifier que les dates sont valides
+    if (isNaN(debut.getTime()) || isNaN(fin.getTime())) {
+      return 0;
+    }
+
+    const diff = fin.getTime() - debut.getTime();
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   }
 
