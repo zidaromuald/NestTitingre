@@ -2,6 +2,16 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { MediaType } from '../enums/media-type.enum';
 import { UploadResponseDto } from '../dto/upload-response.dto';
+import { saveFile, validateFile } from '../config/fastify-upload.config';
+
+interface UploadedFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
 
 @Injectable()
 export class MediaService {
@@ -25,14 +35,20 @@ export class MediaService {
    * Traite un fichier uploadé et retourne les informations
    */
   async handleUpload(
-    file: Express.Multer.File,
+    file: UploadedFile,
     type: MediaType,
   ): Promise<UploadResponseDto> {
     if (!file) {
       throw new BadRequestException('Aucun fichier fourni');
     }
 
-    const path = this.buildFilePath(file.filename, type);
+    // Valider le fichier
+    validateFile(file.mimetype, file.size, type);
+
+    // Sauvegarder le fichier sur le disque
+    const filename = await saveFile(file.buffer, file.originalname, type);
+
+    const path = this.buildFilePath(filename, type);
     const url = this.buildFileUrl(path);
 
     return {
@@ -41,7 +57,7 @@ export class MediaService {
       data: {
         path, // Chemin relatif à stocker en BDD
         url,  // URL complète pour affichage immédiat
-        filename: file.filename,
+        filename,
         size: file.size,
         mimetype: file.mimetype,
         type,

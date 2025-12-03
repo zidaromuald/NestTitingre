@@ -29,7 +29,7 @@ import { GroupeUser } from './modules/groupes/entities/groupe-user.entity';
 import { GroupeInvitation } from './modules/groupes/entities/groupe-invitation.entity';
 import { Post } from './modules/posts/entities/post.entity';
 import { Like } from './modules/posts/entities/like.entity';
-import { Commentaire } from './modules/posts/entities/commentaire.entity';
+ import { Commentaire } from './modules/posts/entities/commentaire.entity';
 import { Suivre } from './modules/suivis/entities/suivre.entity';
 import { InvitationSuivi } from './modules/suivis/entities/invitation-suivi.entity';
 import { DemandeAbonnement } from './modules/suivis/entities/demande-abonnement.entity';

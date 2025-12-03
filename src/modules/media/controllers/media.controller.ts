@@ -3,13 +3,14 @@ import {
   Controller,
   Post,
   UseInterceptors,
-  UploadedFile,
+  Req,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import type { FastifyRequest } from 'fastify';
 import { MediaService } from '../services/media.service';
 import { MediaType } from '../enums/media-type.enum';
-import { getMulterOptions } from '../config/multer.config';
+import { getFastifyUploadOptions } from '../config/fastify-upload.config';
 import { UploadResponseDto } from '../dto/upload-response.dto';
+import { FastifyFileInterceptorFactory } from '../../../common/interceptors/fastify-file.interceptor';
 
 @Controller('media')
 export class MediaController {
@@ -20,10 +21,11 @@ export class MediaController {
    * POST /media/upload/image
    */
   @Post('upload/image')
-  @UseInterceptors(FileInterceptor('file', getMulterOptions(MediaType.IMAGE)))
-  async uploadImage(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<UploadResponseDto> {
+  @UseInterceptors(
+    FastifyFileInterceptorFactory('file', getFastifyUploadOptions(MediaType.IMAGE)),
+  )
+  async uploadImage(@Req() request: FastifyRequest): Promise<UploadResponseDto> {
+    const file = (request as any).file;
     return this.mediaService.handleUpload(file, MediaType.IMAGE);
   }
 
@@ -32,10 +34,11 @@ export class MediaController {
    * POST /media/upload/video
    */
   @Post('upload/video')
-  @UseInterceptors(FileInterceptor('file', getMulterOptions(MediaType.VIDEO)))
-  async uploadVideo(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<UploadResponseDto> {
+  @UseInterceptors(
+    FastifyFileInterceptorFactory('file', getFastifyUploadOptions(MediaType.VIDEO)),
+  )
+  async uploadVideo(@Req() request: FastifyRequest): Promise<UploadResponseDto> {
+    const file = (request as any).file;
     return this.mediaService.handleUpload(file, MediaType.VIDEO);
   }
 
@@ -44,10 +47,11 @@ export class MediaController {
    * POST /media/upload/audio
    */
   @Post('upload/audio')
-  @UseInterceptors(FileInterceptor('file', getMulterOptions(MediaType.AUDIO)))
-  async uploadAudio(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<UploadResponseDto> {
+  @UseInterceptors(
+    FastifyFileInterceptorFactory('file', getFastifyUploadOptions(MediaType.AUDIO)),
+  )
+  async uploadAudio(@Req() request: FastifyRequest): Promise<UploadResponseDto> {
+    const file = (request as any).file;
     return this.mediaService.handleUpload(file, MediaType.AUDIO);
   }
 
@@ -57,11 +61,10 @@ export class MediaController {
    */
   @Post('upload/document')
   @UseInterceptors(
-    FileInterceptor('file', getMulterOptions(MediaType.DOCUMENT)),
+    FastifyFileInterceptorFactory('file', getFastifyUploadOptions(MediaType.DOCUMENT)),
   )
-  async uploadDocument(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<UploadResponseDto> {
+  async uploadDocument(@Req() request: FastifyRequest): Promise<UploadResponseDto> {
+    const file = (request as any).file;
     return this.mediaService.handleUpload(file, MediaType.DOCUMENT);
   }
 }

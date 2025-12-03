@@ -249,7 +249,26 @@ async advancedSearch(searchDto: AdvancedSearchDto) {
    * Mettre à jour le logo de la société
    */
   async updateLogo(societeId: number, logoUrl: string): Promise<SocieteProfil> {
-    return this.updateProfile(societeId, { logo: logoUrl });
+    // Vérifier que la société existe
+    await this.findById(societeId);
+
+    // Chercher le profil existant
+    let profil = await this.profilRepository.findOne({
+      where: { societe_id: societeId },
+    });
+
+    if (!profil) {
+      // Créer un nouveau profil avec le logo
+      profil = this.profilRepository.create({
+        societe_id: societeId,
+        logo: logoUrl,
+      });
+    } else {
+      // Mettre à jour le logo
+      profil.logo = logoUrl;
+    }
+
+    return this.profilRepository.save(profil);
   }
 
   /**

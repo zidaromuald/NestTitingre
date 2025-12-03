@@ -52,15 +52,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (userType === 'user') {
         const user = await this.userService.findById(sub);
         console.log('JWT SUCCESS: User trouvé:', { id: user.id, nom: user.nom });
-        // Retourne l'utilisateur (entité TypeORM) directement
-        return user;
+        // Retourne l'utilisateur avec le userType ajouté
+        return { ...user, userType: 'user' };
       }
 
       if (userType === 'societe') {
         const societe = await this.societeService.findById(sub);
         console.log('JWT SUCCESS: Societe trouvée:', { id: societe.id, nom_societe: societe.nom_societe });
-        // Retourne la société (entité TypeORM) directement
-        return societe;
+        // Retourne la société avec le userType ajouté
+        return { ...societe, userType: 'societe' };
       }
     } catch (error) {
       console.log('JWT ERROR: Erreur lors de la recherche de l\'utilisateur:', error.message);

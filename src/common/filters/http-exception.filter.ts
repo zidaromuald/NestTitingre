@@ -33,7 +33,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
-    response.status(status).json({
+    response.status(status).send({
       status: false,
       message: typeof message === 'string' ? message : message['message'],
       errors: typeof message === 'object' ? message['errors'] : undefined,

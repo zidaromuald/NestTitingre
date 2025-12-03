@@ -3,7 +3,6 @@ import {
   IsString,
   IsOptional,
   IsArray,
-  IsUrl,
   IsInt,
   IsNumber,
   Min,
@@ -14,10 +13,8 @@ import {
 } from 'class-validator';
 
 export class UpdateSocieteProfilDto {
-  @IsOptional()
-  @IsString()
-  @IsUrl({ require_tld: false }, { message: 'Le logo doit être une URL valide' })
-  logo?: string;
+  // Note: Le logo est géré séparément via POST /societes/me/logo
+  // pour assurer validation et sécurité des uploads de fichiers
 
   @IsOptional()
   @IsString()

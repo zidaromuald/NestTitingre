@@ -152,28 +152,40 @@ export class UserService {
 
   /**
    * Mettre à jour le profil utilisateur
+   * Note: email et numero sont mis à jour dans la table users,
+   * les autres champs dans user_profils
    */
   async updateProfile(
     userId: number,
     updateDto: UpdateUserProfilDto,
   ): Promise<UserProfil> {
     // Vérifier que l'utilisateur existe
-    await this.findById(userId);
+    const user = await this.findById(userId);
 
-    // Chercher le profil existant
+    // 1. Mettre à jour email et numero dans la table users si fournis
+    if (updateDto.email || updateDto.numero) {
+      if (updateDto.email) user.email = updateDto.email;
+      if (updateDto.numero) user.numero = updateDto.numero;
+      await this.userRepository.save(user);
+    }
+
+    // 2. Mettre à jour les autres champs dans user_profils
     let profil = await this.profilRepository.findOne({
       where: { user_id: userId },
     });
 
+    // Extraire seulement les champs du profil (bio, experience, formation)
+    const { email, numero, ...profilData } = updateDto;
+
     if (!profil) {
       // Créer un nouveau profil
-      const newProfil = new UserProfil();
-      newProfil.user_id = userId;
-      Object.assign(newProfil, updateDto);
-      profil = newProfil;
+      profil = this.profilRepository.create({
+        user_id: userId,
+        ...profilData,
+      });
     } else {
       // Mettre à jour le profil existant
-      Object.assign(profil, updateDto);
+      Object.assign(profil, profilData);
     }
 
     return this.profilRepository.save(profil);
@@ -183,7 +195,26 @@ export class UserService {
    * Mettre à jour la photo de profil
    */
   async updateProfilePhoto(userId: number, photoUrl: string): Promise<UserProfil> {
-    return this.updateProfile(userId, { photo: photoUrl });
+    // Vérifier que l'utilisateur existe
+    await this.findById(userId);
+
+    // Chercher le profil existant
+    let profil = await this.profilRepository.findOne({
+      where: { user_id: userId },
+    });
+
+    if (!profil) {
+      // Créer un nouveau profil avec la photo
+      profil = this.profilRepository.create({
+        user_id: userId,
+        photo: photoUrl,
+      });
+    } else {
+      // Mettre à jour la photo
+      profil.photo = photoUrl;
+    }
+
+    return this.profilRepository.save(profil);
   }
 
   /**

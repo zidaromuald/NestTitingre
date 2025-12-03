@@ -1,13 +1,16 @@
 // modules/suivis/controllers/suivre.controller.ts
-import { Controller, Get, Post, Delete, Put, Body, Param, Query, ParseIntPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Put, Body, Param, Query, ParseIntPipe, HttpCode, HttpStatus, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { SuivreService } from '../services/suivre.service';
 import { SuivreMapper } from '../mappers/suivre.mapper';
 import { SuivrePolymorphicService } from '../services/suivre-polymorphic.service';
 import { CreateSuiviDto } from '../dto/create-suivi.dto';
 import { UpdateSuiviDto } from '../dto/update-suivi.dto';
 import { UpgradeToAbonnementDto } from '../dto/upgrade-to-abonnement.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 @Controller('suivis')
+@UseGuards(JwtAuthGuard)
 export class SuivreController {
   constructor(
     private readonly suivreService: SuivreService,
@@ -20,10 +23,10 @@ export class SuivreController {
    * POST /suivis
    */
   @Post()
-  async suivre(@Body() createSuiviDto: CreateSuiviDto) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User'; // TODO: JWT
-    const suivre = await this.suivreService.suivre(mockUserId, mockUserType, createSuiviDto);
+  async suivre(@Body() createSuiviDto: CreateSuiviDto, @CurrentUser() user?: any) {
+    // Normaliser userType: 'user' -> 'User', 'societe' -> 'Societe'
+    const normalizedUserType = user.userType === 'user' ? 'User' : 'Societe';
+    const suivre = await this.suivreService.suivre(user.id, normalizedUserType, createSuiviDto);
     const followed = await this.suivrePolymorphicService.getFollowedEntity(suivre);
     return { success: true, message: `Vous suivez maintenant ${createSuiviDto.followed_type === 'User' ? 'cet utilisateur' : 'cette société'}`, data: this.suivreMapper.toPublicData(suivre, followed!) };
   }
@@ -34,10 +37,9 @@ export class SuivreController {
    */
   @Delete(':type/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async unfollow(@Param('type') type: string, @Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User'; // TODO: JWT
-    await this.suivreService.unfollow(mockUserId, mockUserType, id, type);
+  async unfollow(@Param('type') type: string, @Param('id', ParseIntPipe) id: number, @CurrentUser() user?: any) {
+    const normalizedUserType = user.userType === 'user' ? 'User' : 'Societe';
+    await this.suivreService.unfollow(user.id, normalizedUserType, id, type);
     return { success: true, message: 'Vous ne suivez plus cette entité' };
   }
 
@@ -46,10 +48,9 @@ export class SuivreController {
    * PUT /suivis/:type/:id
    */
   @Put(':type/:id')
-  async updateSuivi(@Param('type') type: string, @Param('id', ParseIntPipe) id: number, @Body() updateDto: UpdateSuiviDto) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User'; // TODO: JWT
-    const suivre = await this.suivreService.updateSuivi(mockUserId, mockUserType, id, type, updateDto);
+  async updateSuivi(@Param('type') type: string, @Param('id', ParseIntPipe) id: number, @Body() updateDto: UpdateSuiviDto, @CurrentUser() user?: any) {
+    const normalizedUserType = user.userType === 'user' ? 'User' : 'Societe';
+    const suivre = await this.suivreService.updateSuivi(user.id, normalizedUserType, id, type, updateDto);
     return { success: true, message: 'Préférences mises à jour', data: this.suivreMapper.toPublicData(suivre) };
   }
 
@@ -58,10 +59,9 @@ export class SuivreController {
    * GET /suivis/:type/:id/check
    */
   @Get(':type/:id/check')
-  async checkSuivi(@Param('type') type: string, @Param('id', ParseIntPipe) id: number) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User'; // TODO: JWT
-    const isSuivant = await this.suivreService.isSuivant(mockUserId, mockUserType, id, type);
+  async checkSuivi(@Param('type') type: string, @Param('id', ParseIntPipe) id: number, @CurrentUser() user?: any) {
+    const normalizedUserType = user.userType === 'user' ? 'User' : 'Societe';
+    const isSuivant = await this.suivreService.isSuivant(user.id, normalizedUserType, id, type);
     return { success: true, data: { is_suivant: isSuivant } };
   }
 
@@ -70,10 +70,9 @@ export class SuivreController {
    * GET /suivis/my-following?type=User|Societe
    */
   @Get('my-following')
-  async getMyFollowing(@Query('type') type?: string) {
-    const mockUserId = 1; // TODO: JWT
-    const mockUserType = 'User'; // TODO: JWT
-    const suivres = await this.suivreService.getUserSuivis(mockUserId, mockUserType, type);
+  async getMyFollowing(@Query('type') type?: string, @CurrentUser() user?: any) {
+    const normalizedUserType = user.userType === 'user' ? 'User' : 'Societe';
+    const suivres = await this.suivreService.getUserSuivis(user.id, normalizedUserType, type);
     const data = suivres.map(s => this.suivreMapper.toPublicData(s));
     return { success: true, data, meta: { count: data.length, type: type || 'all' } };
   }
@@ -99,9 +98,13 @@ export class SuivreController {
    * POST /suivis/upgrade-to-abonnement
    */
   @Post('upgrade-to-abonnement')
-  async upgradeToAbonnement(@Body() upgradeDto: UpgradeToAbonnementDto) {
-    const mockUserId = 1;
-    const { abonnement, pagePartenariat } = await this.suivreService.upgradeToAbonnement(mockUserId, upgradeDto);
+  async upgradeToAbonnement(@Body() upgradeDto: UpgradeToAbonnementDto, @CurrentUser() user?: any) {
+    // Vérifier que c'est bien un utilisateur
+    if (user.userType !== 'user') {
+      throw new UnauthorizedException('Seuls les utilisateurs peuvent upgrader vers un abonnement');
+    }
+
+    const { abonnement, pagePartenariat } = await this.suivreService.upgradeToAbonnement(user.id, upgradeDto);
     return {
       success: true,
       message: 'Abonnement créé avec succès. Votre page partenariat est disponible.',

@@ -24,33 +24,11 @@ export class UserProfil {
   @Column({ type: 'text', nullable: true })
   bio: string;
 
-  @Column({ type: 'json', nullable: true })
-  competences: string[] | null;
-
   @Column({ type: 'text', nullable: true })
   experience: string;
 
   @Column({ type: 'text', nullable: true })
   formation: string;
-
-  // Champs optionnels pour extensions futures
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  linkedin: string;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  github: string;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  portfolio: string;
-
-  @Column({ type: 'json', nullable: true })
-  langues: string[] | null;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  disponibilite: string;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  salaire_souhaite: number;
 
   // Colonnes pour les notifications
   @Column({ type: 'boolean', default: true })
@@ -91,15 +69,10 @@ export class UserProfil {
     return this.photo ? `/storage/${this.photo}` : null;
   }
 
-  getCompetencesString(): string {
-    return Array.isArray(this.competences) ? this.competences.join(', ') : '';
-  }
-
   getCompletudeScore(): number {
     const fields = [
       this.photo,
       this.bio,
-      this.competences && this.competences.length > 0,
       this.experience,
       this.formation,
     ];

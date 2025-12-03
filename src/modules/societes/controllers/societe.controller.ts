@@ -11,10 +11,10 @@ import {
   ValidationPipe,
   ParseIntPipe,
   UseInterceptors,
-  UploadedFile,
+  Req,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import type { FastifyRequest } from 'fastify';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { UserTypeGuard } from '../../../common/guards/user-type.guard';
 import { UserType } from '../../../common/decorators/user-type.decorator';
@@ -28,7 +28,8 @@ import { UpdateSocieteProfilDto } from '../dto/update-societe-profil.dto';
 import { Societe } from '../entities/societe.entity';
 import { MediaService } from '../../media/services/media.service';
 import { MediaType } from '../../media/enums/media-type.enum';
-import { getMulterOptions } from '../../media/config/multer.config';
+import { getFastifyUploadOptions } from '../../media/config/fastify-upload.config';
+import { FastifyFileInterceptorFactory } from '../../../common/interceptors/fastify-file.interceptor';
 
 /**
  * SocieteController
@@ -188,11 +189,14 @@ export class SocieteController {
   @Post('me/logo')
   @UseGuards(UserTypeGuard)
   @UserType('societe')
-  @UseInterceptors(FileInterceptor('file', getMulterOptions(MediaType.IMAGE)))
+  @UseInterceptors(
+    FastifyFileInterceptorFactory('file', getFastifyUploadOptions(MediaType.IMAGE)),
+  )
   async uploadLogo(
     @CurrentUser() societe: Societe,
-    @UploadedFile() file: Express.Multer.File,
+    @Req() request: FastifyRequest,
   ) {
+    const file = (request as any).file;
     if (!file) {
       throw new BadRequestException('Aucun fichier fourni');
     }
