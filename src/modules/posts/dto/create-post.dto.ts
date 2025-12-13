@@ -23,10 +23,10 @@ export class CreatePostDto {
   @ValidateIf((o) => !o.groupe_id) // Groupe OU Société, pas les deux
   societe_id?: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   @MaxLength(10000)
-  contenu: string;
+  contenu?: string;
 
   @IsOptional()
   @IsArray()
