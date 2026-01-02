@@ -179,7 +179,7 @@ export class PostController {
     };
   }
 
-  /**
+  /*
    * Rechercher des posts
    * GET /posts/search/query
    *

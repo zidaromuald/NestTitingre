@@ -1,0 +1,367 @@
+{
+  "info": {
+    "name": "Titingre - Inscription avec Vérification SMS",
+    "description": "Collection pour tester l'inscription avec vérification de numéro de téléphone via Twilio",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "user_phone",
+      "value": "+33612345678",
+      "type": "string"
+    },
+    {
+      "key": "societe_phone",
+      "value": "+33687654321",
+      "type": "string"
+    },
+    {
+      "key": "otp_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Registration User",
+      "item": [
+        {
+          "name": "1.1 Request Verification - User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success true\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "// Save userId for later use",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.userId) {",
+                  "    pm.environment.set(\"user_id\", jsonData.data.userId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userType\": \"user\",\n  \"telephone\": \"{{user_phone}}\",\n  \"email\": \"jean.dupont@example.com\",\n  \"password\": \"Password123!\",\n  \"nom\": \"Dupont\",\n  \"prenom\": \"Jean\",\n  \"centre_interet\": \"Technologie et Innovation\",\n  \"date_naissance\": \"1990-05-15\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/registration/request-verification",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "registration", "request-verification"]
+            },
+            "description": "Créer un compte utilisateur et envoyer le code OTP par SMS"
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Verify Phone - User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Phone verified successfully\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.verified).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"{{user_phone}}\",\n  \"otp_code\": \"{{otp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/registration/verify-phone",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "registration", "verify-phone"]
+            },
+            "description": "Vérifier le code OTP et activer le compte utilisateur"
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 Resend OTP - User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"{{user_phone}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/registration/resend-otp",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "registration", "resend-otp"]
+            },
+            "description": "Renvoyer un nouveau code OTP si le précédent a expiré"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Registration Societe",
+      "item": [
+        {
+          "name": "2.1 Request Verification - Societe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.userId) {",
+                  "    pm.environment.set(\"societe_id\", jsonData.data.userId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userType\": \"societe\",\n  \"telephone\": \"{{societe_phone}}\",\n  \"email\": \"contact@techcorp.fr\",\n  \"password\": \"SecurePass456!\",\n  \"nom_societe\": \"TechCorp Solutions\",\n  \"centre_interet\": \"Innovation Technologique\",\n  \"secteur_activite\": \"Informatique\",\n  \"type_produit\": \"Logiciels SaaS\",\n  \"adresse\": \"123 Avenue des Champs, Paris\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/registration/request-verification",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "registration", "request-verification"]
+            },
+            "description": "Créer un compte société et envoyer le code OTP par SMS"
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Verify Phone - Societe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"{{societe_phone}}\",\n  \"otp_code\": \"{{otp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/registration/verify-phone",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "registration", "verify-phone"]
+            },
+            "description": "Vérifier le code OTP et activer le compte société"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Login",
+      "item": [
+        {
+          "name": "3.1 Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 201\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access_token) {",
+                  "    pm.environment.set(\"access_token\", jsonData.access_token);",
+                  "    pm.test(\"Access token received\", function () {",
+                  "        pm.expect(jsonData.access_token).to.exist;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{user_phone}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Se connecter avec le numéro de téléphone et mot de passe"
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 Login Societe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{societe_phone}}\",\n  \"password\": \"SecurePass456!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Se connecter avec le compte société"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Password Reset",
+      "item": [
+        {
+          "name": "4.1 Request Password Reset OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"{{user_phone}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/password-reset/request-otp",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "password-reset", "request-otp"]
+            },
+            "description": "Demander un code OTP pour réinitialiser le mot de passe"
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 Verify Password Reset OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"{{user_phone}}\",\n  \"otp_code\": \"{{otp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/password-reset/verify-otp",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "password-reset", "verify-otp"]
+            },
+            "description": "Vérifier le code OTP avant de réinitialiser le mot de passe"
+          },
+          "response": []
+        },
+        {
+          "name": "4.3 Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"{{user_phone}}\",\n  \"otp_code\": \"{{otp_code}}\",\n  \"new_password\": \"NewPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/password-reset/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "password-reset", "reset-password"]
+            },
+            "description": "Réinitialiser le mot de passe avec le code OTP vérifié"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

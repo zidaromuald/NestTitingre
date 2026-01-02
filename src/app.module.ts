@@ -27,6 +27,7 @@ import { Groupe } from './modules/groupes/entities/groupe.entity';
 import { GroupeProfil } from './modules/groupes/entities/groupe-profil.entity';
 import { GroupeUser } from './modules/groupes/entities/groupe-user.entity';
 import { GroupeInvitation } from './modules/groupes/entities/groupe-invitation.entity';
+import { MessageGroupe } from './modules/groupes/entities/message-groupe.entity';
 import { Post } from './modules/posts/entities/post.entity';
 import { Like } from './modules/posts/entities/like.entity';
  import { Commentaire } from './modules/posts/entities/commentaire.entity';
@@ -69,6 +70,7 @@ import { TransactionCollaboration } from './modules/transactions/entities/transa
           GroupeProfil,
           GroupeUser,
           GroupeInvitation,
+          MessageGroupe,
           Post,
           Like,
           Commentaire,

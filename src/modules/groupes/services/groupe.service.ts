@@ -139,7 +139,7 @@ export class GroupeService {
 
     // Vérifier si le user est déjà membre
     const existingMember = await this.groupeUserRepository.findOne({
-      where: { groupe_id: groupeId, member_id: inviteDto.userId, member_type: 'User' }
+      where: { groupe_id: groupeId, member_id: inviteDto.invitedId, member_type: inviteDto.invitedType }
     });
 
     if (existingMember) {
@@ -152,7 +152,7 @@ export class GroupeService {
       const isAbonne = await this.groupeRepository.manager.query(
         `SELECT COUNT(*) as count FROM abonnements
          WHERE user_id = $1 AND societe_id = $2 AND statut = 'active'`,
-        [inviteDto.userId, groupe.created_by_id]
+        [inviteDto.invitedId, groupe.created_by_id]
       );
 
       if (parseInt(isAbonne[0]?.count || '0') === 0) {
@@ -164,8 +164,8 @@ export class GroupeService {
       await this.groupeUserRepository.save(
         this.groupeUserRepository.create({
           groupe_id: groupeId,
-          member_id: inviteDto.userId,
-          member_type: 'User',
+          member_id: inviteDto.invitedId,
+          member_type: inviteDto.invitedType,
           role: roleToAssign
         })
       );
@@ -181,8 +181,8 @@ export class GroupeService {
     const invitation = await this.groupeInvitationRepository.save(
       this.groupeInvitationRepository.create({
         groupe_id: groupeId,
-        invited_id: inviteDto.userId,
-        invited_type: 'User',
+        invited_id: inviteDto.invitedId,
+        invited_type: inviteDto.invitedType,
         inviter_id: inviter.id,
         inviter_type: inviter.type,
         message: inviteDto.message,

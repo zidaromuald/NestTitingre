@@ -85,7 +85,7 @@ export class MessageGroupe {
   updated_at: Date;
 
   // Relations
-  @ManyToOne(() => Groupe, (groupe) => groupe.messages)
+  @ManyToOne(() => Groupe)
   @JoinColumn({ name: 'groupe_id' })
   groupe: Groupe;
 

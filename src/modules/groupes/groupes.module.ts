@@ -29,7 +29,6 @@ import { Post } from '../posts/entities/post.entity';
       GroupeInvitation,
       GroupeProfil,
       MessageGroupe,
-      GroupeRepository,
       User,
       Societe,
       Post,

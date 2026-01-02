@@ -8,6 +8,7 @@ import {
   MaxLength,
   Matches,
 } from 'class-validator';
+import { WEST_AFRICA_PHONE_REGEX, WEST_AFRICA_PHONE_ERROR_MESSAGE } from '../../../common/validators/phone-number.validator';
 
 export class CreateSocieteDto {
   @IsString()
@@ -18,8 +19,8 @@ export class CreateSocieteDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
-  @Matches(/^[0-9+\-\s()]+$/, {
-    message: 'Le numéro doit contenir uniquement des chiffres',
+  @Matches(WEST_AFRICA_PHONE_REGEX, {
+    message: WEST_AFRICA_PHONE_ERROR_MESSAGE,
   })
   numero: string;
 

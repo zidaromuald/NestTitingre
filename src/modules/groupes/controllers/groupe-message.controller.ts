@@ -15,8 +15,6 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { User } from '../../users/entities/user.entity';
-import { Societe } from '../../societes/entities/societe.entity';
 import { MessageGroupeService } from '../services/message-groupe.service';
 import { MessageGroupeMapper } from '../mappers/message-groupe.mapper';
 import { SendGroupMessageDto } from '../dto/send-group-message.dto';
@@ -39,10 +37,19 @@ export class GroupeMessageController {
   async sendMessage(
     @Param('groupeId', ParseIntPipe) groupeId: number,
     @Body() dto: SendGroupMessageDto,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const userType = currentUser instanceof User ? 'User' : 'Societe';
+
+    // Debug: Afficher les informations de l'utilisateur actuel
+    console.log('=== CONTROLLER DEBUG ===');
+    console.log('currentUser:', currentUser);
+    console.log('currentUser.userType:', currentUser.userType);
+    console.log('currentUser.id:', currentUser.id);
+
+    // Utiliser le champ userType ajouté par la stratégie JWT
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+    console.log('userType déterminé:', userType);
 
     const message = await this.messageService.sendMessage(groupeId, userId, userType, dto);
 
@@ -60,16 +67,19 @@ export class GroupeMessageController {
   @Get()
   async getMessages(
     @Param('groupeId', ParseIntPipe) groupeId: number,
+    @CurrentUser() currentUser: any,
     @Query('limit') limit?: number,
     @Query('offset') offset?: number,
-    @CurrentUser() currentUser: User | Societe,
   ) {
     const userId = currentUser.id;
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+
     const messages = await this.messageService.getMessagesByGroupe(
       groupeId,
       userId,
       limit || 100,
       offset || 0,
+      userType,
     );
 
     const data = this.messageMapper.toPublicDataArray(messages, userId);
@@ -92,10 +102,11 @@ export class GroupeMessageController {
   @Get('unread')
   async getUnreadMessages(
     @Param('groupeId', ParseIntPipe) groupeId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const messages = await this.messageService.getUnreadMessages(groupeId, userId);
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+    const messages = await this.messageService.getUnreadMessages(groupeId, userId, userType);
     const data = this.messageMapper.toPublicDataArray(messages, userId);
 
     return {
@@ -112,10 +123,11 @@ export class GroupeMessageController {
   @Get('pinned')
   async getPinnedMessages(
     @Param('groupeId', ParseIntPipe) groupeId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const messages = await this.messageService.getPinnedMessages(groupeId, userId);
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+    const messages = await this.messageService.getPinnedMessages(groupeId, userId, userType);
     const data = this.messageMapper.toPublicDataArray(messages, userId);
 
     return {
@@ -132,10 +144,11 @@ export class GroupeMessageController {
   @Get('stats')
   async getMessagesStats(
     @Param('groupeId', ParseIntPipe) groupeId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const stats = await this.messageService.getMessagesStats(groupeId, userId);
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+    const stats = await this.messageService.getMessagesStats(groupeId, userId, userType);
 
     return {
       success: true,
@@ -151,10 +164,11 @@ export class GroupeMessageController {
   async markMessageAsRead(
     @Param('groupeId', ParseIntPipe) groupeId: number,
     @Param('id', ParseIntPipe) messageId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const message = await this.messageService.markMessageAsRead(messageId, userId);
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+    const message = await this.messageService.markMessageAsRead(messageId, userId, userType);
 
     return {
       success: true,
@@ -170,10 +184,11 @@ export class GroupeMessageController {
   @Put('mark-all-read')
   async markAllMessagesAsRead(
     @Param('groupeId', ParseIntPipe) groupeId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    await this.messageService.markAllMessagesAsRead(groupeId, userId);
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+    await this.messageService.markAllMessagesAsRead(groupeId, userId, userType);
 
     return {
       success: true,
@@ -190,10 +205,11 @@ export class GroupeMessageController {
     @Param('groupeId', ParseIntPipe) groupeId: number,
     @Param('id', ParseIntPipe) messageId: number,
     @Body() dto: UpdateGroupMessageDto,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const message = await this.messageService.updateMessage(messageId, userId, dto);
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+    const message = await this.messageService.updateMessage(messageId, userId, userType, dto);
 
     return {
       success: true,
@@ -211,10 +227,11 @@ export class GroupeMessageController {
   async deleteMessage(
     @Param('groupeId', ParseIntPipe) groupeId: number,
     @Param('id', ParseIntPipe) messageId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    await this.messageService.deleteMessage(messageId, userId);
+    const userType = currentUser.userType === 'user' ? 'User' : 'Societe';
+    await this.messageService.deleteMessage(messageId, userId, userType);
 
     return {
       success: true,
@@ -230,7 +247,7 @@ export class GroupeMessageController {
   async pinMessage(
     @Param('groupeId', ParseIntPipe) groupeId: number,
     @Param('id', ParseIntPipe) messageId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
     const message = await this.messageService.pinMessage(messageId, userId);

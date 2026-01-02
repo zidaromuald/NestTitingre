@@ -1,4 +1,4 @@
-// modules/users/dto/create-user.dto.ts
+// modules/auth/dto/register-with-firebase.dto.ts
 import {
   IsString,
   IsEmail,
@@ -11,7 +11,13 @@ import {
 } from 'class-validator';
 import { WEST_AFRICA_PHONE_REGEX, WEST_AFRICA_PHONE_ERROR_MESSAGE } from '../../../common/validators/phone-number.validator';
 
-export class CreateUserDto {
+/**
+ * DTO pour l'inscription avec Firebase Authentication
+ *
+ * Ce DTO est utilisé quand le numéro de téléphone a déjà été vérifié
+ * avec Firebase. Le backend vérifie le token Firebase et crée le compte.
+ */
+export class RegisterWithFirebaseDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
@@ -52,4 +58,12 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   password_confirmation: string;
+
+  /**
+   * Token Firebase ID obtenu après vérification du numéro
+   * Ce token prouve que le numéro a été vérifié avec Firebase
+   */
+  @IsString()
+  @IsNotEmpty()
+  firebaseIdToken: string;
 }

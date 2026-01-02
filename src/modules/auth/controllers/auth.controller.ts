@@ -8,20 +8,36 @@ import {
   HttpCode,
   HttpStatus,
   ValidationPipe,
+  BadRequestException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 import { AuthService } from '../services/auth.service';
+import { FirebaseAuthService } from '../services/firebase-auth.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { UserType } from '../../../common/decorators/user-type.decorator';
 import { UserTypeGuard } from '../../../common/guards/user-type.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { RegisterUserDto, RegisterSocieteDto } from '../dto/register.dto';
+import { RegisterWithFirebaseDto } from '../dto/register-with-firebase.dto';
+import { ResetPasswordFirebaseDto } from '../dto/reset-password-firebase.dto';
 import { LoginDto } from '../dto/login.dto';
 import { User } from '../../users/entities/user.entity';
 import { Societe } from '../../societes/entities/societe.entity';
+import { PasswordResetService } from '../services/password-reset.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly firebaseAuthService: FirebaseAuthService,
+    private readonly passwordResetService: PasswordResetService,
+    private readonly jwtService: JwtService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
   // ========== USER ROUTES ==========
 
@@ -30,9 +46,88 @@ export class AuthController {
     return this.authService.registerUser(registerDto);
   }
 
+  @Post('register-firebase')
+  async registerWithFirebase(
+    @Body(ValidationPipe) dto: RegisterWithFirebaseDto,
+  ) {
+    // Vérifier le token Firebase
+    const decodedToken = await this.firebaseAuthService.verifyIdToken(
+      dto.firebaseIdToken,
+    );
+
+    // Vérifier que le numéro correspond
+    if (decodedToken.phone_number !== dto.numero) {
+      throw new BadRequestException(
+        'Le numéro de téléphone ne correspond pas au token Firebase',
+      );
+    }
+
+    // Vérifier si password et password_confirmation correspondent
+    if (dto.password !== dto.password_confirmation) {
+      throw new BadRequestException(
+        'Le mot de passe et sa confirmation ne correspondent pas',
+      );
+    }
+
+    // Vérifier si le numéro existe déjà
+    const existingUser = await this.userRepository.findOne({
+      where: { numero: dto.numero },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('Ce numéro de téléphone est déjà utilisé');
+    }
+
+    // Créer le compte (numéro déjà vérifié par Firebase)
+    const user = this.userRepository.create({
+      nom: dto.nom,
+      prenom: dto.prenom,
+      numero: dto.numero,
+      email: dto.email,
+      activite: dto.activite,
+      date_naissance: new Date(dto.date_naissance),
+      password: await bcrypt.hash(dto.password, 10),
+      is_phone_verified: true, // ✅ Déjà vérifié par Firebase
+      phone_verified_at: new Date(),
+    });
+
+    await this.userRepository.save(user);
+
+    // Générer token JWT
+    const payload = {
+      sub: user.id,
+      userType: 'user',
+    };
+    const token = this.jwtService.sign(payload);
+
+    return {
+      status: true,
+      message: 'Utilisateur créé avec succès',
+      data: {
+        user: {
+          id: user.id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          numero: user.numero,
+          is_phone_verified: true,
+        },
+        token,
+        token_type: 'Bearer',
+        user_type: 'user',
+      },
+    };
+  }
+
   @Post('login')
   async loginUser(@Body(ValidationPipe) loginDto: LoginDto) {
     return this.authService.loginUser(loginDto);
+  }
+
+  @Post('password-reset')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body(ValidationPipe) dto: ResetPasswordFirebaseDto) {
+    return this.passwordResetService.resetPasswordWithFirebase(dto);
   }
 
   @Get('me')

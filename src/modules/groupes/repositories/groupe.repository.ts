@@ -90,6 +90,31 @@ export class GroupeRepository extends Repository<Groupe> {
   }
 
   /**
+   * Vérifier si un membre (User ou Societe) est membre d'un groupe
+   */
+  async isMembre(groupeId: number, memberId: number, memberType: string): Promise<boolean> {
+    console.log('=== isMembre DEBUG ===');
+    console.log('groupeId:', groupeId);
+    console.log('memberId:', memberId);
+    console.log('memberType:', memberType);
+
+    const count = await this.dataSource
+      .getRepository(GroupeUser)
+      .count({
+        where: {
+          groupe_id: groupeId,
+          member_id: memberId,
+          member_type: memberType,
+        },
+      });
+
+    console.log('count trouvé:', count);
+    console.log('isMember result:', count > 0);
+
+    return count > 0;
+  }
+
+  /**
    * Récupérer le rôle d'un membre dans un groupe
    */
   async getMembreRole(groupeId: number, userId: number): Promise<string | null> {

@@ -17,7 +17,6 @@ import { Societe } from '../../societes/entities/societe.entity';
 import { GroupeProfil } from './groupe-profil.entity';
 import { GroupeInvitation } from './groupe-invitation.entity';
 import { Post } from '../../posts/entities/post.entity';
-import { MessageGroupe } from './message-groupe.entity';
 
 export enum GroupeType {
   PUBLIC = 'public',
@@ -112,8 +111,8 @@ export class Groupe {
   @OneToMany(() => Post, (post) => post.groupe)
   posts: Post[];
 
-  @OneToMany(() => MessageGroupe, (message) => message.groupe)
-  messages: MessageGroupe[];
+  // @OneToMany(() => MessageGroupe, (message) => message.groupe)
+  // messages: MessageGroupe[];
 
   // Méthodes helper
   isCreatedBySociete(): boolean {

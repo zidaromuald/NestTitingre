@@ -18,7 +18,6 @@ import { AbonnementService } from '../services/abonnement.service';
 import { AbonnementMapper } from '../mappers/abonnement.mapper';
 import { UpdateAbonnementDto } from '../dto/update-abonnement.dto';
 import { UpdatePermissionsDto } from '../dto/update-permissions.dto';
-import { GererSoldeDto } from '../dto/gerer-solde.dto';
 import { AbonnementStatut } from '../entities/abonnement.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';

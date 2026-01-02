@@ -53,6 +53,12 @@ export class Societe {
   @Column({ type: 'timestamp', nullable: true })
   email_verified_at: Date;
 
+  @Column({ type: 'boolean', default: false })
+  is_phone_verified: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  phone_verified_at: Date;
+
   @CreateDateColumn()
   created_at: Date;
 

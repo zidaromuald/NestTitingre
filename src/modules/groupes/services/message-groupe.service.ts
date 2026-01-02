@@ -27,17 +27,15 @@ export class MessageGroupeService {
     dto: SendGroupMessageDto,
   ): Promise<MessageGroupe> {
     // Vérifier que le groupe existe
-    const groupe = await this.groupeRepository.findById(groupeId);
+    const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
     if (!groupe) {
       throw new NotFoundException('Groupe introuvable');
     }
 
-    // Vérifier que l'utilisateur est membre du groupe
-    if (senderType === 'User') {
-      const isMember = await this.groupeRepository.isUserMembre(groupeId, senderId);
-      if (!isMember) {
-        throw new ForbiddenException('Vous devez être membre du groupe pour envoyer un message');
-      }
+    // Vérifier que l'utilisateur/société est membre du groupe
+    const isMember = await this.groupeRepository.isMembre(groupeId, senderId, senderType);
+    if (!isMember) {
+      throw new ForbiddenException('Vous devez être membre du groupe pour envoyer un message');
     }
 
     // Créer le message
@@ -64,15 +62,16 @@ export class MessageGroupeService {
     userId: number,
     limit = 100,
     offset = 0,
+    userType = 'User',
   ): Promise<MessageGroupe[]> {
     // Vérifier que le groupe existe
-    const groupe = await this.groupeRepository.findById(groupeId);
+    const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
     if (!groupe) {
       throw new NotFoundException('Groupe introuvable');
     }
 
-    // Vérifier que l'utilisateur est membre du groupe
-    const isMember = await this.groupeRepository.isUserMembre(groupeId, userId);
+    // Vérifier que l'utilisateur/société est membre du groupe
+    const isMember = await this.groupeRepository.isMembre(groupeId, userId, userType);
     if (!isMember) {
       throw new ForbiddenException('Vous devez être membre du groupe pour voir les messages');
     }
@@ -83,14 +82,14 @@ export class MessageGroupeService {
   /**
    * Récupérer les messages non lus d'un groupe pour un utilisateur
    */
-  async getUnreadMessages(groupeId: number, userId: number): Promise<MessageGroupe[]> {
+  async getUnreadMessages(groupeId: number, userId: number, userType: string): Promise<MessageGroupe[]> {
     // Vérifier que le groupe existe et que l'utilisateur est membre
-    const groupe = await this.groupeRepository.findById(groupeId);
+    const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
     if (!groupe) {
       throw new NotFoundException('Groupe introuvable');
     }
 
-    const isMember = await this.groupeRepository.isUserMembre(groupeId, userId);
+    const isMember = await this.groupeRepository.isMembre(groupeId, userId, userType);
     if (!isMember) {
       throw new ForbiddenException('Vous devez être membre du groupe');
     }
@@ -101,8 +100,8 @@ export class MessageGroupeService {
   /**
    * Compter les messages non lus d'un groupe pour un utilisateur
    */
-  async countUnreadMessages(groupeId: number, userId: number): Promise<number> {
-    const isMember = await this.groupeRepository.isUserMembre(groupeId, userId);
+  async countUnreadMessages(groupeId: number, userId: number, userType: string): Promise<number> {
+    const isMember = await this.groupeRepository.isMembre(groupeId, userId, userType);
     if (!isMember) {
       return 0;
     }
@@ -116,6 +115,7 @@ export class MessageGroupeService {
   async markMessageAsRead(
     messageId: number,
     userId: number,
+    userType: string,
   ): Promise<MessageGroupe> {
     const message = await this.messageGroupeRepository.findById(messageId);
 
@@ -124,7 +124,7 @@ export class MessageGroupeService {
     }
 
     // Vérifier que l'utilisateur est membre du groupe
-    const isMember = await this.groupeRepository.isUserMembre(message.groupe_id, userId);
+    const isMember = await this.groupeRepository.isMembre(message.groupe_id, userId, userType);
     if (!isMember) {
       throw new ForbiddenException('Vous devez être membre du groupe');
     }
@@ -137,9 +137,9 @@ export class MessageGroupeService {
   /**
    * Marquer tous les messages d'un groupe comme lus
    */
-  async markAllMessagesAsRead(groupeId: number, userId: number): Promise<void> {
+  async markAllMessagesAsRead(groupeId: number, userId: number, userType: string): Promise<void> {
     // Vérifier que l'utilisateur est membre du groupe
-    const isMember = await this.groupeRepository.isUserMembre(groupeId, userId);
+    const isMember = await this.groupeRepository.isMembre(groupeId, userId, userType);
     if (!isMember) {
       throw new ForbiddenException('Vous devez être membre du groupe');
     }
@@ -153,6 +153,7 @@ export class MessageGroupeService {
   async updateMessage(
     messageId: number,
     userId: number,
+    userType: string,
     dto: UpdateGroupMessageDto,
   ): Promise<MessageGroupe> {
     const message = await this.messageGroupeRepository.findById(messageId);
@@ -162,7 +163,7 @@ export class MessageGroupeService {
     }
 
     // Vérifier que c'est bien l'auteur du message
-    if (message.sender_id !== userId || message.sender_type !== 'User') {
+    if (message.sender_id !== userId || message.sender_type !== userType) {
       throw new ForbiddenException('Vous ne pouvez modifier que vos propres messages');
     }
 
@@ -188,7 +189,7 @@ export class MessageGroupeService {
   /**
    * Supprimer un message
    */
-  async deleteMessage(messageId: number, userId: number): Promise<void> {
+  async deleteMessage(messageId: number, userId: number, userType: string): Promise<void> {
     const message = await this.messageGroupeRepository.findById(messageId);
 
     if (!message) {
@@ -196,7 +197,7 @@ export class MessageGroupeService {
     }
 
     // Vérifier que c'est bien l'auteur du message
-    if (message.sender_id !== userId || message.sender_type !== 'User') {
+    if (message.sender_id !== userId || message.sender_type !== userType) {
       throw new ForbiddenException('Vous ne pouvez supprimer que vos propres messages');
     }
 
@@ -226,9 +227,9 @@ export class MessageGroupeService {
   /**
    * Récupérer les messages épinglés d'un groupe
    */
-  async getPinnedMessages(groupeId: number, userId: number): Promise<MessageGroupe[]> {
+  async getPinnedMessages(groupeId: number, userId: number, userType: string): Promise<MessageGroupe[]> {
     // Vérifier que l'utilisateur est membre du groupe
-    const isMember = await this.groupeRepository.isUserMembre(groupeId, userId);
+    const isMember = await this.groupeRepository.isMembre(groupeId, userId, userType);
     if (!isMember) {
       throw new ForbiddenException('Vous devez être membre du groupe');
     }
@@ -239,15 +240,15 @@ export class MessageGroupeService {
   /**
    * Récupérer les statistiques de messages d'un groupe
    */
-  async getMessagesStats(groupeId: number, userId: number) {
+  async getMessagesStats(groupeId: number, userId: number, userType: string) {
     // Vérifier que l'utilisateur est membre du groupe
-    const isMember = await this.groupeRepository.isUserMembre(groupeId, userId);
+    const isMember = await this.groupeRepository.isMembre(groupeId, userId, userType);
     if (!isMember) {
-      throw new ForbiddenException('Vous devez être membre du groupe');
+      throw new ForbiddenException('Vous devez être membre du groupe pour voir les statistiques');
     }
 
     const stats = await this.messageGroupeRepository.getGroupeMessagesStats(groupeId);
-    const unreadCount = await this.countUnreadMessages(groupeId, userId);
+    const unreadCount = await this.countUnreadMessages(groupeId, userId, userType);
 
     return {
       ...stats,

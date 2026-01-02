@@ -1,11 +1,16 @@
 // modules/groupes/dto/invite-membre.dto.ts
-import { IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, IsEnum } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, IsEnum, IsIn } from 'class-validator';
 import { MembreRole } from '../entities/groupe.entity';
 
 export class InviteMembreDto {
   @IsNotEmpty()
   @IsInt()
-  userId: number;
+  invitedId: number; // Renommé de userId pour plus de clarté
+
+  @IsNotEmpty()
+  @IsString()
+  @IsIn(['User', 'Societe'], { message: 'invitedType doit être "User" ou "Societe"' })
+  invitedType: string; // 'User' ou 'Societe'
 
   @IsOptional()
   @IsString()

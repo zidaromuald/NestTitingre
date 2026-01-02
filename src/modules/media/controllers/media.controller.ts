@@ -20,6 +20,8 @@ export class MediaController {
    * Upload une image
    * POST /media/upload/image
    */
+  // UTILISER AWS S3 POUR LE STOCKAGE DES MEDIAS OU CLOUDFLARE
+  
   @Post('upload/image')
   @UseInterceptors(
     FastifyFileInterceptorFactory('file', getFastifyUploadOptions(MediaType.IMAGE)),
