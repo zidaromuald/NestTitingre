@@ -3,6 +3,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { MediaType } from '../enums/media-type.enum';
 import { UploadResponseDto } from '../dto/upload-response.dto';
 import { saveFile, validateFile } from '../config/fastify-upload.config';
+import { CloudflareR2Service } from '../../../cloudflare-r2/cloudflare-r2.service';
 
 interface UploadedFile {
   fieldname: string;
@@ -15,6 +16,9 @@ interface UploadedFile {
 
 @Injectable()
 export class MediaService {
+  constructor(
+    private readonly cloudflareR2Service: CloudflareR2Service,
+  ) {}
   /**
    * Construit le chemin relatif du fichier uploadé
    */
@@ -76,6 +80,51 @@ export class MediaService {
       [MediaType.DOCUMENT]: 'Document',
     };
     return labels[type];
+  }
+
+
+  /**
+   * Upload un fichier vers Cloudflare R2 (recommandé pour réseaux sociaux)
+   * Stockage cloud économique et performant avec CDN Cloudflare
+   */
+  async handleUploadToR2(
+    file: UploadedFile,
+    type: MediaType,
+  ): Promise<UploadResponseDto> {
+    if (!file) {
+      throw new BadRequestException('Aucun fichier fourni');
+    }
+
+    // Valider le fichier
+    validateFile(file.mimetype, file.size, type);
+
+    // Upload vers Cloudflare R2
+    const result = await this.cloudflareR2Service.uploadFile(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+      type,
+    );
+
+    return {
+      success: true,
+      message: `${this.getTypeLabel(type)} uploadé(e) avec succès sur Cloudflare R2`,
+      data: {
+        path: result.key, // Clé R2 à stocker en BDD
+        url: result.url,  // URL publique CDN Cloudflare
+        filename: file.originalname,
+        size: result.size,
+        mimetype: file.mimetype,
+        type,
+      },
+    };
+  }
+
+  /**
+   * Supprime un fichier de Cloudflare R2
+   */
+  async deleteFromR2(key: string): Promise<any> {
+    return await this.cloudflareR2Service.deleteFile(key);
   }
 
   /**

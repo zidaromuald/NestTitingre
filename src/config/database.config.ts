@@ -6,8 +6,11 @@ export default registerAs('database', () => ({
   port: parseInt(process.env.DB_PORT || '5432', 10),
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || '',
-  name: process.env.DB_NAME || 'ma_base_nest',
-  // Synchronize désactivé - Utilisation des migrations
-  synchronize: process.env.DB_SYNCHRONIZE === 'true' || false,
-  logging: process.env.DB_LOGGING === 'true' || false,
+  name: process.env.DB_NAME || 'titingre_db',
+
+  // IMPORTANT: Synchronize TOUJOURS false (on utilise les migrations)
+  synchronize: false,
+
+  // Logging adaptatif selon l'environnement
+  logging: process.env.NODE_ENV === 'development',
 }));

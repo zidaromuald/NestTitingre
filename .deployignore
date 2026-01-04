@@ -1,0 +1,41 @@
+# Fichiers à exclure du déploiement production sur Hostinger
+# (Ces fichiers restent dans Git mais ne sont pas déployés)
+
+# Documentation
+/documents/
+*.md
+!README.md
+
+# Développement
+/test/
+/coverage/
+/.vscode/
+/.idea/
+
+# Fichiers de configuration locale
+.env.example
+.eslintrc.js
+.prettierrc
+tsconfig.json
+tsconfig.build.json
+nest-cli.json
+
+# Code source TypeScript (on déploie uniquement /dist/)
+/src/
+
+# Tests
+*.spec.ts
+*.test.ts
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Logs
+*.log
+npm-debug.log*
+
+# Fichiers temporaires
+.DS_Store
+.tmp/
+.temp/
