@@ -1,10 +1,12 @@
 // config/typeorm.config.ts
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { config } from 'dotenv';
+import { join } from 'path';
 
 config();
 
 const isProduction = process.env.NODE_ENV === 'production';
+const rootDir = join(__dirname, '../..');
 
 export const typeOrmConfig: DataSourceOptions = {
   type: 'postgres',
@@ -17,14 +19,14 @@ export const typeOrmConfig: DataSourceOptions = {
   // Entities et migrations - Adaptation automatique dev/prod
   entities: [
     isProduction
-      ? 'dist/**/*.entity.js'  // En prod, utilise les fichiers compilés
-      : 'src/**/*.entity.ts'   // En dev, utilise les fichiers source
+      ? join(rootDir, 'dist/**/*.entity.js')  // En prod, utilise les fichiers compilés
+      : join(rootDir, 'src/**/*.entity.ts')   // En dev, utilise les fichiers source
   ],
 
   migrations: [
     isProduction
-      ? 'dist/migrations/*.js'
-      : 'src/migrations/*.ts'
+      ? join(rootDir, 'dist/migrations/*.js')
+      : join(rootDir, 'src/migrations/*.ts')
   ],
 
   // Options de base
