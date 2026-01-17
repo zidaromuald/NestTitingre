@@ -128,18 +128,19 @@ export class MediaService {
   }
 
   /**
-   * TODO: Méthode pour upload vers AWS S3
-   * À implémenter quand on migre vers S3
+   * Upload via le provider configuré (STORAGE_PROVIDER)
+   * Utilise R2 si configuré, sinon stockage local
    */
-  // async uploadToS3(file: Express.Multer.File): Promise<string> {
-  //   // Logique S3 ici
-  // }
+  async upload(
+    file: UploadedFile,
+    type: MediaType,
+  ): Promise<UploadResponseDto> {
+    const storageProvider = process.env.STORAGE_PROVIDER || 'local';
 
-  /**
-   * TODO: Méthode pour upload vers Azure Blob Storage
-   * À implémenter quand on migre vers Azure
-   */
-  // async uploadToAzure(file: Express.Multer.File): Promise<string> {
-  //   // Logique Azure ici
-  // }
+    if (storageProvider === 'r2') {
+      return this.handleUploadToR2(file, type);
+    }
+
+    return this.handleUpload(file, type);
+  }
 }

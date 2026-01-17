@@ -17,26 +17,9 @@ export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   /**
-   * Sélectionne le provider de stockage selon la configuration
-   */
-  private async handleUploadByProvider(
-    file: any,
-    type: MediaType,
-  ): Promise<UploadResponseDto> {
-    const storageProvider = process.env.STORAGE_PROVIDER || 'local';
-
-    switch (storageProvider) {
-      case 'r2':
-        return this.mediaService.handleUploadToR2(file, type);
-      default:
-        return this.mediaService.handleUpload(file, type);
-    }
-  }
-
-  /**
    * Upload une image
    * POST /media/upload/image
-   * Provider configuré via STORAGE_PROVIDER (local, cloudinary, r2)
+   * Provider configuré via STORAGE_PROVIDER (local ou r2)
    */
   @Post('upload/image')
   @UseInterceptors(
@@ -44,13 +27,13 @@ export class MediaController {
   )
   async uploadImage(@Req() request: FastifyRequest): Promise<UploadResponseDto> {
     const file = (request as any).file;
-    return this.handleUploadByProvider(file, MediaType.IMAGE);
+    return this.mediaService.upload(file, MediaType.IMAGE);
   }
 
   /**
    * Upload une vidéo
    * POST /media/upload/video
-   * Provider configuré via STORAGE_PROVIDER (local, cloudinary, r2)
+   * Provider configuré via STORAGE_PROVIDER (local ou r2)
    */
   @Post('upload/video')
   @UseInterceptors(
@@ -58,13 +41,13 @@ export class MediaController {
   )
   async uploadVideo(@Req() request: FastifyRequest): Promise<UploadResponseDto> {
     const file = (request as any).file;
-    return this.handleUploadByProvider(file, MediaType.VIDEO);
+    return this.mediaService.upload(file, MediaType.VIDEO);
   }
 
   /**
    * Upload un fichier audio
    * POST /media/upload/audio
-   * Provider configuré via STORAGE_PROVIDER (local, cloudinary, r2)
+   * Provider configuré via STORAGE_PROVIDER (local ou r2)
    */
   @Post('upload/audio')
   @UseInterceptors(
@@ -72,13 +55,13 @@ export class MediaController {
   )
   async uploadAudio(@Req() request: FastifyRequest): Promise<UploadResponseDto> {
     const file = (request as any).file;
-    return this.handleUploadByProvider(file, MediaType.AUDIO);
+    return this.mediaService.upload(file, MediaType.AUDIO);
   }
 
   /**
    * Upload un document
    * POST /media/upload/document
-   * Provider configuré via STORAGE_PROVIDER (local, cloudinary, r2)
+   * Provider configuré via STORAGE_PROVIDER (local ou r2)
    */
   @Post('upload/document')
   @UseInterceptors(
@@ -86,6 +69,6 @@ export class MediaController {
   )
   async uploadDocument(@Req() request: FastifyRequest): Promise<UploadResponseDto> {
     const file = (request as any).file;
-    return this.handleUploadByProvider(file, MediaType.DOCUMENT);
+    return this.mediaService.upload(file, MediaType.DOCUMENT);
   }
 }

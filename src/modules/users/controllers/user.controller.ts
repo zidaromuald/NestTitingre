@@ -128,8 +128,8 @@ export class UserController {
       throw new BadRequestException('Aucun fichier fourni');
     }
 
-    // Upload via MediaService
-    const uploadResult = await this.mediaService.handleUpload(file, MediaType.IMAGE);
+    // Upload via MediaService (respecte STORAGE_PROVIDER: r2 ou local)
+    const uploadResult = await this.mediaService.upload(file, MediaType.IMAGE);
 
     // Mettre à jour le profil avec l'URL de la photo
     const profile = await this.userService.updateProfilePhoto(
