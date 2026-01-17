@@ -62,11 +62,36 @@ export class PolymorphicHelper {
 
   /**
    * Obtenir le nom du type à partir de la classe
+   * Gère les cas où l'objet a été désérialisé (depuis JWT par exemple)
    */
   static getTypeName(entity: any): string {
-    if (entity.constructor && entity.constructor.name) {
+    // 1. Si c'est une vraie instance de classe TypeORM
+    if (entity.constructor && entity.constructor.name && entity.constructor.name !== 'Object') {
       return entity.constructor.name;
     }
+
+    // 2. Détection basée sur les propriétés spécifiques à chaque entité
+    // User a typiquement: nom, prenom (ou prenoms), numero, email
+    // Societe a typiquement: nom_societe, sigle, numero_registre
+
+    if ('nom_societe' in entity || 'sigle' in entity || 'numero_registre' in entity) {
+      return PolymorphicTypes.SOCIETE;
+    }
+
+    if ('prenom' in entity || 'prenoms' in entity || ('nom' in entity && 'numero' in entity)) {
+      return PolymorphicTypes.USER;
+    }
+
+    // 3. Si l'entité a un champ userType (depuis le JWT)
+    if (entity.userType) {
+      return entity.userType === 'user' ? PolymorphicTypes.USER : PolymorphicTypes.SOCIETE;
+    }
+
+    // 4. Fallback: essayer de deviner par la présence de 'email' sans 'nom_societe'
+    if ('email' in entity && !('nom_societe' in entity)) {
+      return PolymorphicTypes.USER;
+    }
+
     return 'Unknown';
   }
 }
