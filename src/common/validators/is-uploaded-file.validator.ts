@@ -45,6 +45,7 @@ export function IsUploadedFile(validationOptions?: ValidationOptions) {
 
 /**
  * Vérifie si une URL correspond au pattern des fichiers uploadés
+ * Supporte: chemins relatifs, URLs locales, URLs de production, et Cloudflare R2
  */
 function isValidUploadUrl(url: string): boolean {
   if (typeof url !== 'string' || url.trim() === '') {
@@ -60,15 +61,27 @@ function isValidUploadUrl(url: string): boolean {
   // Pattern pour les URLs de production (rétrocompatibilité)
   const productionPattern = /^https?:\/\/.+\/uploads\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|pdf|doc|docx|xls|xlsx|txt)$/i;
 
-  // Accepte: chemin relatif OU URLs complètes
-  return relativePattern.test(url) || localPattern.test(url) || productionPattern.test(url);
+  // Pattern pour Cloudflare R2 URLs (format: https://pub-xxx.r2.dev/images/image-xxx.ext)
+  const cloudflareR2Pattern = /^https:\/\/pub-[a-f0-9]+\.r2\.dev\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|pdf|doc|docx|xls|xlsx|txt)$/i;
+
+  // Pattern pour clés R2 (format: images/image-xxx.ext - sans le domaine)
+  const r2KeyPattern = /^(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|pdf|doc|docx|xls|xlsx|txt)$/i;
+
+  // Accepte: chemin relatif OU URLs complètes OU URLs Cloudflare R2 OU clés R2
+  return (
+    relativePattern.test(url) ||
+    localPattern.test(url) ||
+    productionPattern.test(url) ||
+    cloudflareR2Pattern.test(url) ||
+    r2KeyPattern.test(url)
+  );
 }
 
 /**
  * Retourne le pattern autorisé pour les messages d'erreur
  */
 function getAllowedPattern(): string {
-  return 'uploads/{type}/{filename} ou http://localhost:3000/uploads/{type}/{filename}';
+  return 'uploads/{type}/{filename}, https://pub-xxx.r2.dev/{type}/{filename}, ou URL de production';
 }
 
 /**
