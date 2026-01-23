@@ -7,6 +7,7 @@ import { SocieteUser } from '../../societes/entities/societe-user.entity';
 import { InvitationSuivi, InvitationSuiviStatus } from '../../suivis/entities/invitation-suivi.entity';
 import { User } from '../../users/entities/user.entity';
 import { Societe } from '../../societes/entities/societe.entity';
+import { PolymorphicHelper } from '../../../common/helpers/polymorphic.helper';
 
 @Injectable()
 export class PostPermissionService {
@@ -20,17 +21,23 @@ export class PostPermissionService {
   ) {}
 
   /**
-   * Vérifier si l'auteur est membre d'un groupe
+   * Obtenir le type d'auteur de manière fiable (gère les objets désérialisés du JWT)
+   */
+  private getAuthorType(author: User | Societe): string {
+    return PolymorphicHelper.getTypeName(author);
+  }
+
+  /**
+   * Vérifier si l'auteur est membre d'un groupe (n'importe quel rôle)
    */
   async verifyGroupeMembership(
     author: User | Societe,
     groupeId: number,
   ): Promise<boolean> {
     const authorId = author.id;
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
+    // Vérifier si l'auteur est membre du groupe (n'importe quel rôle: admin, moderateur, membre)
     const membership = await this.groupeUserRepo.findOne({
       where: {
         groupe_id: groupeId,
@@ -55,9 +62,7 @@ export class PostPermissionService {
     author: User | Societe,
     societeId: number,
   ): Promise<boolean> {
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
     // Si c'est une société qui poste, elle doit poster sur sa propre page
     if (authorType === 'Societe') {
@@ -94,9 +99,7 @@ export class PostPermissionService {
     groupeId: number,
   ): Promise<boolean> {
     const authorId = author.id;
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
     const membership = await this.groupeUserRepo.findOne({
       where: {
@@ -117,9 +120,7 @@ export class PostPermissionService {
     author: User | Societe,
     societeId: number,
   ): Promise<boolean> {
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
     // Une société est toujours admin de sa propre page
     if (authorType === 'Societe' && author.id === societeId) {
@@ -147,9 +148,7 @@ export class PostPermissionService {
    */
   async getFollowedUserIds(author: User | Societe): Promise<number[]> {
     const authorId = author.id;
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
     const suivis = await this.invitationSuiviRepo.find({
       where: {
@@ -169,9 +168,7 @@ export class PostPermissionService {
    */
   async getFollowedSocieteIds(author: User | Societe): Promise<number[]> {
     const authorId = author.id;
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
     const suivis = await this.invitationSuiviRepo.find({
       where: {
@@ -191,9 +188,7 @@ export class PostPermissionService {
    */
   async getUserGroupeIds(author: User | Societe): Promise<number[]> {
     const authorId = author.id;
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
     const memberships = await this.groupeUserRepo.find({
       where: {
@@ -211,9 +206,7 @@ export class PostPermissionService {
    */
   async getUserAdminGroupeIds(author: User | Societe): Promise<number[]> {
     const authorId = author.id;
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
     const memberships = await this.groupeUserRepo.find({
       where: {
@@ -231,9 +224,7 @@ export class PostPermissionService {
    * Récupérer les IDs des sociétés dont l'auteur est membre/employé
    */
   async getUserSocieteIds(author: User | Societe): Promise<number[]> {
-    const authorType = author.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const authorType = this.getAuthorType(author);
 
     // Si c'est une société, retourner son propre ID
     if (authorType === 'Societe') {
