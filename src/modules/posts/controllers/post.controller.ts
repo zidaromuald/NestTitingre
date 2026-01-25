@@ -121,7 +121,7 @@ export class PostController {
     @Query('offset') offset?: number,
     @Query('onlyWithMedia') onlyWithMedia?: boolean,
   ) {
-    const posts = await this.postService.getPersonalizedFeed(currentUser, {
+    const postsWithAuthors = await this.postService.getPersonalizedFeedWithAuthors(currentUser, {
       limit: limit || 20,
       offset: offset || 0,
       onlyWithMedia: onlyWithMedia === true,
@@ -129,9 +129,9 @@ export class PostController {
 
     return {
       success: true,
-      data: posts.map((post) => this.postMapper.toSimpleData(post)),
+      data: this.postMapper.toFeedData(postsWithAuthors),
       meta: {
-        count: posts.length,
+        count: postsWithAuthors.length,
         limit: limit || 20,
         offset: offset || 0,
       },
@@ -148,7 +148,7 @@ export class PostController {
     @Query('offset') offset?: number,
     @Query('onlyWithMedia') onlyWithMedia?: boolean,
   ) {
-    const posts = await this.postService.getFeed({
+    const postsWithAuthors = await this.postService.getFeedWithAuthors({
       limit: limit || 20,
       offset: offset || 0,
       onlyWithMedia: onlyWithMedia === true,
@@ -156,9 +156,9 @@ export class PostController {
 
     return {
       success: true,
-      data: posts.map((post) => this.postMapper.toSimpleData(post)),
+      data: this.postMapper.toFeedData(postsWithAuthors),
       meta: {
-        count: posts.length,
+        count: postsWithAuthors.length,
         limit: limit || 20,
         offset: offset || 0,
       },

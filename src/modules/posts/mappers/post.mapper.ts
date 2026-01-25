@@ -135,8 +135,8 @@ export class PostMapper {
   toFeedData(
     postsWithAuthorsAndGroupes: Array<{
       post: Post;
-      author?: User | Societe;
-      groupe?: Groupe;
+      author?: User | Societe | null;
+      groupe?: Groupe | null;
     }>,
   ): PostPublicData[] {
     return postsWithAuthorsAndGroupes.map(({ post, author, groupe }) =>

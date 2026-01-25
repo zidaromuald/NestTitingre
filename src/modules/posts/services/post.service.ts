@@ -11,6 +11,7 @@ import { UpdatePostDto } from '../dto/update-post.dto';
 import { User } from '../../users/entities/user.entity';
 import { Societe } from '../../societes/entities/societe.entity';
 import { Groupe } from '../../groupes/entities/groupe.entity';
+import { PolymorphicHelper } from '../../../common/helpers/polymorphic.helper';
 
 @Injectable()
 export class PostService {
@@ -187,7 +188,7 @@ export class PostService {
   }
 
   /**
-   * Récupérer le feed public
+   * Récupérer le feed public (posts seulement)
    */
   async getFeed(options?: {
     limit?: number;
@@ -195,6 +196,36 @@ export class PostService {
     onlyWithMedia?: boolean;
   }): Promise<Post[]> {
     return this.postRepository.getFeed(options);
+  }
+
+  /**
+   * Récupérer le feed public avec les auteurs
+   */
+  async getFeedWithAuthors(options?: {
+    limit?: number;
+    offset?: number;
+    onlyWithMedia?: boolean;
+  }): Promise<Array<{ post: Post; author: User | Societe | null; groupe: Groupe | null }>> {
+    const posts = await this.postRepository.getFeed(options);
+    return this.enrichPostsWithAuthors(posts);
+  }
+
+  /**
+   * Enrichir une liste de posts avec leurs auteurs et groupes
+   */
+  private async enrichPostsWithAuthors(
+    posts: Post[],
+  ): Promise<Array<{ post: Post; author: User | Societe | null; groupe: Groupe | null }>> {
+    return Promise.all(
+      posts.map(async (post) => {
+        const author = await this.postPolymorphicService.getAuthor(post);
+        let groupe: Groupe | null = null;
+        if (post.groupe_id) {
+          groupe = await this.groupeRepo.findOne({ where: { id: post.groupe_id } });
+        }
+        return { post, author, groupe };
+      }),
+    );
   }
 
   /**
@@ -216,9 +247,7 @@ export class PostService {
     const offset = options?.offset || 0;
 
     const currentUserId = currentUser.id;
-    const currentUserType = currentUser.constructor.name === 'User'
-      ? 'User'
-      : 'Societe';
+    const currentUserType = PolymorphicHelper.getTypeName(currentUser);
 
     // Récupérer les IDs des entités suivies
     const followedUserIds = await this.postPermissionService.getFollowedUserIds(currentUser);
@@ -325,10 +354,35 @@ export class PostService {
   }
 
   /**
+   * Récupérer le feed personnalisé avec les auteurs
+   */
+  async getPersonalizedFeedWithAuthors(
+    currentUser: User | Societe,
+    options?: {
+      limit?: number;
+      offset?: number;
+      onlyWithMedia?: boolean;
+    },
+  ): Promise<Array<{ post: Post; author: User | Societe | null; groupe: Groupe | null }>> {
+    const posts = await this.getPersonalizedFeed(currentUser, options);
+    return this.enrichPostsWithAuthors(posts);
+  }
+
+  /**
    * Rechercher des posts
    */
   async search(filters: PostSearchFilters): Promise<Post[]> {
     return this.postRepository.searchWithFilters(filters);
+  }
+
+  /**
+   * Rechercher des posts avec auteurs
+   */
+  async searchWithAuthors(
+    filters: PostSearchFilters,
+  ): Promise<Array<{ post: Post; author: User | Societe | null; groupe: Groupe | null }>> {
+    const posts = await this.postRepository.searchWithFilters(filters);
+    return this.enrichPostsWithAuthors(posts);
   }
 
   /**
