@@ -49,6 +49,17 @@ export class GroupeInvitationController {
   }
 
   /**
+   * Récupérer les invitations envoyées par l'utilisateur connecté
+   * GET /groupes/invitations/sent
+   */
+  @Get('invitations/sent')
+  async getMySentInvitations(@Request() req: any) {
+    const inviterId = req.user.id;
+    const inviterType = req.user.userType === 'societe' ? 'Societe' : 'User';
+    return this.groupeService.getMySentInvitations(inviterId, inviterType);
+  }
+
+  /**
    * Accepter une invitation à rejoindre un groupe
    * POST /groupes/invitations/:id/accept
    */

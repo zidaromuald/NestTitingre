@@ -1,7 +1,7 @@
 // modules/suivis/services/invitation-suivi.service.ts
 import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { InvitationSuivi, InvitationSuiviStatus } from '../entities/invitation-suivi.entity';
 import { InvitationSuiviRepository } from '../repositories/invitation-suivi.repository';
 import { CreateInvitationSuiviDto } from '../dto/create-invitation-suivi.dto';
@@ -172,17 +172,27 @@ export class InvitationSuiviService {
   }
 
   /**
-   * Mes invitations envoyées
+   * Mes invitations envoyées (avec données sender/receiver)
    */
-  async getMesInvitationsEnvoyees(senderId: number, senderType: string, status?: InvitationSuiviStatus): Promise<InvitationSuivi[]> {
-    return this.invitationSuiviRepository.findInvitationsEnvoyees(senderId, senderType, status);
+  async getMesInvitationsEnvoyees(
+    senderId: number,
+    senderType: string,
+    status?: InvitationSuiviStatus,
+  ): Promise<{ invitation: InvitationSuivi; sender?: User | Societe; receiver?: User | Societe }[]> {
+    const invitations = await this.invitationSuiviRepository.findInvitationsEnvoyees(senderId, senderType, status);
+    return this.enrichInvitationsWithUsers(invitations);
   }
 
   /**
-   * Mes invitations reçues
+   * Mes invitations reçues (avec données sender/receiver)
    */
-  async getMesInvitationsRecues(userId: number, receiverType: string, status?: InvitationSuiviStatus): Promise<InvitationSuivi[]> {
-    return this.invitationSuiviRepository.findInvitationsRecues(userId, receiverType, status);
+  async getMesInvitationsRecues(
+    userId: number,
+    receiverType: string,
+    status?: InvitationSuiviStatus,
+  ): Promise<{ invitation: InvitationSuivi; sender?: User | Societe; receiver?: User | Societe }[]> {
+    const invitations = await this.invitationSuiviRepository.findInvitationsRecues(userId, receiverType, status);
+    return this.enrichInvitationsWithUsers(invitations);
   }
 
   /**
@@ -190,5 +200,51 @@ export class InvitationSuiviService {
    */
   async countInvitationsPending(userId: number, receiverType: string): Promise<number> {
     return this.invitationSuiviRepository.countInvitationsPending(userId, receiverType);
+  }
+
+  /**
+   * Enrichit les invitations avec les données sender/receiver
+   */
+  private async enrichInvitationsWithUsers(
+    invitations: InvitationSuivi[],
+  ): Promise<{ invitation: InvitationSuivi; sender?: User | Societe; receiver?: User | Societe }[]> {
+    if (invitations.length === 0) return [];
+
+    // Collecter tous les IDs uniques par type
+    const userIds = new Set<number>();
+    const societeIds = new Set<number>();
+
+    for (const inv of invitations) {
+      if (inv.sender_type === 'User') userIds.add(inv.sender_id);
+      else societeIds.add(inv.sender_id);
+
+      if (inv.receiver_type === 'User') userIds.add(inv.receiver_id);
+      else societeIds.add(inv.receiver_id);
+    }
+
+    // Charger tous les users et societes en une seule requête
+    const users = userIds.size > 0
+      ? await this.userRepo.findBy({ id: In([...userIds]) })
+      : [];
+    const societes = societeIds.size > 0
+      ? await this.societeRepo.findBy({ id: In([...societeIds]) })
+      : [];
+
+    // Créer des maps pour accès rapide
+    const userMap = new Map(users.map(u => [u.id, u]));
+    const societeMap = new Map(societes.map(s => [s.id, s]));
+
+    // Enrichir chaque invitation
+    return invitations.map(inv => {
+      const sender = inv.sender_type === 'User'
+        ? userMap.get(inv.sender_id)
+        : societeMap.get(inv.sender_id);
+
+      const receiver = inv.receiver_type === 'User'
+        ? userMap.get(inv.receiver_id)
+        : societeMap.get(inv.receiver_id);
+
+      return { invitation: inv, sender, receiver };
+    });
   }
 }

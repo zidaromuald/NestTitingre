@@ -104,8 +104,10 @@ export class InvitationSuiviController {
     @CurrentUser() user?: any,
   ) {
     const senderType = user.userType === 'user' ? 'User' : 'Societe';
-    const invitations = await this.invitationService.getMesInvitationsEnvoyees(user.id, senderType, status);
-    const data = invitations.map(inv => this.invitationMapper.toPublicData(inv));
+    const invitationsWithUsers = await this.invitationService.getMesInvitationsEnvoyees(user.id, senderType, status);
+    const data = invitationsWithUsers.map(({ invitation, sender, receiver }) =>
+      this.invitationMapper.toPublicData(invitation, sender, receiver),
+    );
     return { success: true, data, meta: { count: data.length, status: status || 'all' }};
   }
 
@@ -119,8 +121,10 @@ export class InvitationSuiviController {
     @CurrentUser() user?: any,
   ) {
     const receiverType = user.userType === 'user' ? 'User' : 'Societe';
-    const invitations = await this.invitationService.getMesInvitationsRecues(user.id, receiverType, status);
-    const data = invitations.map(inv => this.invitationMapper.toPublicData(inv));
+    const invitationsWithUsers = await this.invitationService.getMesInvitationsRecues(user.id, receiverType, status);
+    const data = invitationsWithUsers.map(({ invitation, sender, receiver }) =>
+      this.invitationMapper.toPublicData(invitation, sender, receiver),
+    );
     return { success: true, data, meta: { count: data.length, status: status || 'all' }};
   }
 

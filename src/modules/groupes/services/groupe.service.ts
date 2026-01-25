@@ -1,7 +1,7 @@
 // modules/groupes/services/groupe.service.ts
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { GroupeRepository } from '../repositories/groupe.repository';
 import { MembreRole } from '../entities/groupe.entity';
 import { GroupeUser } from '../entities/groupe-user.entity';
@@ -13,6 +13,8 @@ import { CreateGroupeDto } from '../dto/create-groupe.dto';
 import { UpdateGroupeDto } from '../dto/update-groupe.dto';
 import { InviteMembreDto } from '../dto/invite-membre.dto';
 import { UpdateMembreRoleDto } from '../dto/update-membre-role.dto';
+import { User } from '../../users/entities/user.entity';
+import { Societe } from '../../societes/entities/societe.entity';
 
 @Injectable()
 export class GroupeService {
@@ -25,6 +27,10 @@ export class GroupeService {
     private readonly groupeInvitationRepository: Repository<GroupeInvitation>,
     @InjectRepository(GroupeProfil)
     private readonly groupeProfilRepository: Repository<GroupeProfil>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Societe)
+    private readonly societeRepository: Repository<Societe>,
     private readonly groupePolymorphicService: GroupePolymorphicService,
     private readonly groupeMapper: GroupeMapper,
   ) {}
@@ -381,7 +387,72 @@ export class GroupeService {
   async getMyInvitations(userId: number) {
     const invitations = await this.groupeInvitationRepository.find({
       where: { invited_id: userId, status: InvitationStatus.PENDING },
-      relations: ['groupe'],
+      relations: ['groupe', 'invitedByUser'],
+      order: { created_at: 'DESC' },
+    });
+
+    // Collecter les IDs de Societe inviters pour les charger en batch
+    const societeInviterIds = invitations
+      .filter(inv => inv.inviter_type === 'Societe')
+      .map(inv => inv.inviter_id);
+
+    // Charger les Societes en une seule requête
+    const societeMap = new Map<number, Societe>();
+    if (societeInviterIds.length > 0) {
+      const societes = await this.societeRepository.findBy({ id: In(societeInviterIds) });
+      societes.forEach(s => societeMap.set(s.id, s));
+    }
+
+    const result = await Promise.all(
+      invitations.map(async (invitation) => {
+        const groupe = invitation.groupe;
+        const membresCount = await this.groupeRepository.countMembres(groupe.id);
+
+        // Construire les informations de l'inviter
+        let inviter: { id: number; type: string; nom?: string; prenom?: string; nom_societe?: string };
+        if (invitation.inviter_type === 'User' && invitation.invitedByUser) {
+          inviter = {
+            id: invitation.invitedByUser.id,
+            nom: invitation.invitedByUser.nom,
+            prenom: invitation.invitedByUser.prenom,
+            type: 'User',
+          };
+        } else if (invitation.inviter_type === 'Societe') {
+          const societe = societeMap.get(invitation.inviter_id);
+          inviter = {
+            id: invitation.inviter_id,
+            type: 'Societe',
+            nom_societe: societe?.nom_societe,
+          };
+        } else {
+          inviter = {
+            id: invitation.inviter_id,
+            type: invitation.inviter_type,
+          };
+        }
+
+        return {
+          id: invitation.id,
+          message: invitation.message,
+          created_at: invitation.created_at,
+          groupe: this.groupeMapper.toPublicData(groupe, membresCount),
+          inviter_id: invitation.inviter_id,
+          inviter_type: invitation.inviter_type,
+          inviter,
+        };
+      }),
+    );
+
+    return { total: result.length, invitations: result };
+  }
+
+  /**
+   * Récupérer les invitations envoyées par un utilisateur ou une société
+   */
+  async getMySentInvitations(inviterId: number, inviterType: string) {
+    const invitations = await this.groupeInvitationRepository.find({
+      where: { inviter_id: inviterId, inviter_type: inviterType },
+      relations: ['groupe', 'invitedUser'],
       order: { created_at: 'DESC' },
     });
 
@@ -389,12 +460,28 @@ export class GroupeService {
       invitations.map(async (invitation) => {
         const groupe = invitation.groupe;
         const membresCount = await this.groupeRepository.countMembres(groupe.id);
+
+        // Construire les informations de l'invité
+        let invitedUser: { id: number; type: string; nom?: string; prenom?: string } | undefined;
+        if (invitation.invitedUser) {
+          invitedUser = {
+            id: invitation.invitedUser.id,
+            nom: invitation.invitedUser.nom,
+            prenom: invitation.invitedUser.prenom,
+            type: 'User',
+          };
+        }
+
         return {
           id: invitation.id,
           message: invitation.message,
+          status: invitation.status,
           created_at: invitation.created_at,
+          accepted_at: invitation.accepted_at,
           groupe: this.groupeMapper.toPublicData(groupe, membresCount),
-          inviter_id: invitation.inviter_id,
+          invited_id: invitation.invited_id,
+          invited_type: invitation.invited_type,
+          invitedUser,
         };
       }),
     );
