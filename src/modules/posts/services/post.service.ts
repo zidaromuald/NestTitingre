@@ -218,12 +218,17 @@ export class PostService {
   ): Promise<Array<{ post: Post; author: User | Societe | null; groupe: Groupe | null }>> {
     return Promise.all(
       posts.map(async (post) => {
-        const author = await this.postPolymorphicService.getAuthor(post);
-        let groupe: Groupe | null = null;
-        if (post.groupe_id) {
-          groupe = await this.groupeRepo.findOne({ where: { id: post.groupe_id } });
+        try {
+          const author = await this.postPolymorphicService.getAuthor(post);
+          let groupe: Groupe | null = null;
+          if (post.groupe_id) {
+            groupe = await this.groupeRepo.findOne({ where: { id: post.groupe_id } });
+          }
+          return { post, author, groupe };
+        } catch (error) {
+          console.error(`[PostService] Error enriching post ${post.id}:`, error);
+          return { post, author: null, groupe: null };
         }
-        return { post, author, groupe };
       }),
     );
   }

@@ -20,10 +20,16 @@ export class PolymorphicHelper {
     relation: PolymorphicRelation,
     repositories: Map<string, Repository<any>>,
   ): Promise<T | null> {
+    if (!relation.type || !relation.id) {
+      console.warn(`[PolymorphicHelper] Invalid relation: type=${relation.type}, id=${relation.id}`);
+      return null;
+    }
+
     const repository = repositories.get(relation.type);
 
     if (!repository) {
-      throw new Error(`No repository found for type: ${relation.type}`);
+      console.warn(`[PolymorphicHelper] No repository found for type: ${relation.type}`);
+      return null;
     }
 
     return repository.findOne({ where: { id: relation.id } });
