@@ -48,6 +48,25 @@ export class SuivrePolymorphicService {
   }
 
   /**
+   * Récupérer l'entité qui suit (le follower - User ou Societe)
+   * Équivalent: $suivre->follower dans Laravel
+   */
+  async getFollowerEntity(suivre: Suivre): Promise<User | Societe | null> {
+    const repositories = new Map<string, Repository<any>>([
+      [PolymorphicTypes.USER, this.userRepository],
+      [PolymorphicTypes.SOCIETE, this.societeRepository],
+    ]);
+
+    return PolymorphicHelper.morphTo<User | Societe>(
+      {
+        id: suivre.user_id,
+        type: suivre.user_type,
+      },
+      repositories,
+    );
+  }
+
+  /**
    * Récupérer tous les utilisateurs suivis par un user
    */
   async getUsersFollowedBy(userId: number): Promise<User[]> {

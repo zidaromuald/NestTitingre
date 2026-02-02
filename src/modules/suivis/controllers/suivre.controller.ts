@@ -66,30 +66,47 @@ export class SuivreController {
   }
 
   /**
-   * Récupérer mes suivis
+   * Récupérer mes suivis avec les détails des entités suivies
    * GET /suivis/my-following?type=User|Societe
    */
   @Get('my-following')
   async getMyFollowing(@Query('type') type?: string, @CurrentUser() user?: any) {
     const normalizedUserType = user.userType === 'user' ? 'User' : 'Societe';
     const suivres = await this.suivreService.getUserSuivis(user.id, normalizedUserType, type);
-    const data = suivres.map(s => this.suivreMapper.toPublicData(s));
+
+    // Charger les entités suivies pour chaque suivi
+    const data = await Promise.all(
+      suivres.map(async (s) => {
+        const followed = await this.suivrePolymorphicService.getFollowedEntity(s);
+        return this.suivreMapper.toPublicData(s, undefined, followed || undefined);
+      })
+    );
+
     return { success: true, data, meta: { count: data.length, type: type || 'all' } };
   }
 
   /**
-   * Récupérer les followers
+   * Récupérer les followers avec leurs détails
    * GET /suivis/:type/:id/followers
    */
   @Get(':type/:id/followers')
   async getFollowers(@Param('type') type: string, @Param('id', ParseIntPipe) id: number) {
     const suivres = await this.suivreService.getFollowers(id, type);
-    const data = suivres.map(s => ({
-      user_id: s.user_id,
-      user_type: s.user_type,
-      score_engagement: s.calculerScoreEngagement(),
-      suivi_depuis: s.created_at
-    }));
+
+    // Charger les données de chaque follower (User ou Societe)
+    const data = await Promise.all(
+      suivres.map(async (s) => {
+        const follower = await this.suivrePolymorphicService.getFollowerEntity(s);
+        return {
+          user_id: s.user_id,
+          user_type: s.user_type,
+          user: follower ? this.suivreMapper.mapEntity(follower, s.user_type) : null,
+          score_engagement: s.calculerScoreEngagement(),
+          suivi_depuis: s.created_at
+        };
+      })
+    );
+
     return { success: true, data, meta: { count: data.length } };
   }
 

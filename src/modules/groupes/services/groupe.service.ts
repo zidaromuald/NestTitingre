@@ -102,12 +102,27 @@ export class GroupeService {
     return this.groupeMapper.toSearchResults(groupes, groupes.length, membresCountMap);
   }
 
-  async getUserGroupes(userId: number) {
+  async getUserGroupes(userId: number, userType: string = 'User') {
     const groupes = await this.groupeRepository.findByUserId(userId);
-    const result = await Promise.all(groupes.map(async (groupe) => ({
-      ...this.groupeMapper.toPublicData(groupe, await this.groupeRepository.countMembres(groupe.id)),
-      myRole: await this.groupeRepository.getMembreRole(groupe.id, userId),
-    })));
+    const result = await Promise.all(groupes.map(async (groupe) => {
+      // Vérifier si l'utilisateur est le créateur du groupe
+      const isCreator = groupe.created_by_id === userId && groupe.created_by_type === userType;
+      // Vérifier si l'utilisateur est l'admin désigné
+      const isDesignatedAdmin = groupe.admin_user_id === userId;
+
+      // Récupérer le rôle depuis groupe_users
+      let myRole = await this.groupeRepository.getMembreRole(groupe.id, userId);
+
+      // Si le créateur ou admin désigné, forcer le rôle à 'admin'
+      if (isCreator || isDesignatedAdmin) {
+        myRole = 'admin';
+      }
+
+      return {
+        ...this.groupeMapper.toPublicData(groupe, await this.groupeRepository.countMembres(groupe.id)),
+        myRole,
+      };
+    }));
     return { total: result.length, groupes: result };
   }
 

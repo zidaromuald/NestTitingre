@@ -53,7 +53,9 @@ export class GroupeController {
     if (!req.user || !req.user.id) {
       throw new UnauthorizedException('Authentification requise');
     }
-    return this.groupeService.getUserGroupes(req.user.id);
+    // Normaliser userType pour la comparaison avec created_by_type
+    const userType = req.user.userType === 'user' ? 'User' : 'Societe';
+    return this.groupeService.getUserGroupes(req.user.id, userType);
   }
 
   /**
