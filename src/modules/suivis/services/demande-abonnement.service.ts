@@ -96,29 +96,45 @@ export class DemandeAbonnementService {
       demande.responded_at = new Date();
       await queryRunner.manager.save(demande);
 
-      // 3. Récupérer les entités User et Societe - utiliser DataSource
+      // 3. Récupérer les entités User et Societe
       const user = await this.dataSource.getRepository(User).findOne({ where: { id: demande.user_id } });
       const societe = await this.dataSource.getRepository(Societe).findOne({ where: { id: demande.societe_id } });
       if (!user || !societe) throw new NotFoundException('User ou Société introuvable');
 
-      // 4. Créer 2 Suivre mutuels (User ↔ Societe)
-      const suivre1 = this.suivreRepo.create({
-        user_id: demande.user_id,
-        user_type: 'User',
-        followed_id: demande.societe_id,
-        followed_type: 'Societe',
+      // 4. Vérifier si un abonnement existe déjà
+      const existingAbonnement = await this.abonnementRepo.findOne({
+        where: { user_id: demande.user_id, societe_id: demande.societe_id },
       });
-      const savedSuivre1 = await queryRunner.manager.save(suivre1);
+      if (existingAbonnement) {
+        throw new ConflictException('Un abonnement existe déjà entre cet utilisateur et cette société');
+      }
 
-      const suivre2 = this.suivreRepo.create({
-        user_id: demande.societe_id,
-        user_type: 'Societe',
-        followed_id: demande.user_id,
-        followed_type: 'User',
+      // 5. Créer les Suivre mutuels (User ↔ Societe) si pas encore existants
+      let savedSuivre1 = await this.suivreRepo.findOne({
+        where: { user_id: demande.user_id, user_type: 'User', followed_id: demande.societe_id, followed_type: 'Societe' },
       });
-      const savedSuivre2 = await queryRunner.manager.save(suivre2);
+      if (!savedSuivre1) {
+        savedSuivre1 = await queryRunner.manager.save(this.suivreRepo.create({
+          user_id: demande.user_id,
+          user_type: 'User',
+          followed_id: demande.societe_id,
+          followed_type: 'Societe',
+        }));
+      }
 
-      // 5. Créer l'Abonnement
+      let savedSuivre2 = await this.suivreRepo.findOne({
+        where: { user_id: demande.societe_id, user_type: 'Societe', followed_id: demande.user_id, followed_type: 'User' },
+      });
+      if (!savedSuivre2) {
+        savedSuivre2 = await queryRunner.manager.save(this.suivreRepo.create({
+          user_id: demande.societe_id,
+          user_type: 'Societe',
+          followed_id: demande.user_id,
+          followed_type: 'User',
+        }));
+      }
+
+      // 6. Créer l'Abonnement
       const abonnement = this.abonnementRepo.create({
         user_id: demande.user_id,
         societe_id: demande.societe_id,
@@ -130,19 +146,20 @@ export class DemandeAbonnementService {
       });
       const savedAbonnement = await queryRunner.manager.save(abonnement);
 
-      // 6. Créer la PagePartenariat - utiliser DataSource
-      const titreDefaut = `${societe.nom_societe} - ${user.prenom} ${user.nom}`;
+      // 7. Créer la PagePartenariat
+      const nomUser = `${user.prenom || ''} ${user.nom || ''}`.trim() || 'Utilisateur';
+      const titreDefaut = `${societe.nom_societe} - ${nomUser}`;
       const pagePartenariat = this.dataSource.getRepository(PagePartenariat).create({
         abonnement_id: savedAbonnement.id,
         titre: demande.titre_partenariat || titreDefaut,
-        description: demande.description_partenariat || `Partenariat ${societe.nom_societe} et ${user.prenom} ${user.nom}`,
+        description: demande.description_partenariat || `Partenariat ${societe.nom_societe} et ${nomUser}`,
         secteur_activite: demande.secteur_collaboration || societe.secteur_activite,
         visibilite: VisibilitePagePartenariat.PRIVATE,
         date_debut_partenariat: new Date(),
       });
       const savedPagePartenariat = await queryRunner.manager.save(pagePartenariat);
 
-      // 7. Mettre à jour l'abonnement avec la page
+      // 8. Mettre à jour l'abonnement avec la page
       savedAbonnement.page_partenariat_id = savedPagePartenariat.id;
       savedAbonnement.page_partenariat_creee = true;
       await queryRunner.manager.save(savedAbonnement);
