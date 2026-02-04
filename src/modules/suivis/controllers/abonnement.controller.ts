@@ -31,12 +31,30 @@ export class AbonnementController {
   ) {}
 
   /**
+   * Normalise le statut reçu (supporte français et anglais)
+   */
+  private normalizeStatut(statut?: string): AbonnementStatut | undefined {
+    if (!statut) return undefined;
+    const mapping: Record<string, AbonnementStatut> = {
+      active: AbonnementStatut.ACTIVE,
+      actif: AbonnementStatut.ACTIVE,
+      inactive: AbonnementStatut.INACTIVE,
+      inactif: AbonnementStatut.INACTIVE,
+      suspended: AbonnementStatut.SUSPENDED,
+      suspendu: AbonnementStatut.SUSPENDED,
+      expired: AbonnementStatut.EXPIRED,
+      expire: AbonnementStatut.EXPIRED,
+    };
+    return mapping[statut.toLowerCase().trim()] || undefined;
+  }
+
+  /**
    * Récupérer mes abonnements (en tant qu'utilisateur)
    * GET /abonnements/my-subscriptions?statut=active
    */
   @Get('my-subscriptions')
   async getMyAbonnements(
-    @Query('statut') statut?: AbonnementStatut,
+    @Query('statut') statut?: string,
     @CurrentUser() user?: any,
   ) {
     // Vérifier que c'est bien un utilisateur
@@ -44,7 +62,8 @@ export class AbonnementController {
       throw new UnauthorizedException('Endpoint réservé aux utilisateurs');
     }
 
-    const abonnements = await this.abonnementService.getMyAbonnements(user.id, statut);
+    const normalizedStatut = this.normalizeStatut(statut);
+    const abonnements = await this.abonnementService.getMyAbonnements(user.id, normalizedStatut);
     const data = this.abonnementMapper.toList(abonnements);
 
     return {
@@ -52,7 +71,7 @@ export class AbonnementController {
       data,
       meta: {
         count: data.length,
-        statut: statut || 'all',
+        statut: normalizedStatut || 'all',
       },
     };
   }
@@ -63,7 +82,7 @@ export class AbonnementController {
    */
   @Get('my-subscribers')
   async getMyAbonnes(
-    @Query('statut') statut?: AbonnementStatut,
+    @Query('statut') statut?: string,
     @CurrentUser() user?: any,
   ) {
     // Vérifier que c'est bien une société
@@ -71,7 +90,8 @@ export class AbonnementController {
       throw new UnauthorizedException('Endpoint réservé aux sociétés');
     }
 
-    const abonnements = await this.abonnementService.getMyAbonnes(user.id, statut);
+    const normalizedStatut = this.normalizeStatut(statut);
+    const abonnements = await this.abonnementService.getMyAbonnes(user.id, normalizedStatut);
     const data = this.abonnementMapper.toList(abonnements);
 
     return {
@@ -79,7 +99,7 @@ export class AbonnementController {
       data,
       meta: {
         count: data.length,
-        statut: statut || 'all',
+        statut: normalizedStatut || 'all',
       },
     };
   }

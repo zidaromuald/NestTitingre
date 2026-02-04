@@ -73,19 +73,19 @@ export class GroupeService {
     return { message: 'Groupe créé avec succès', groupe: this.groupeMapper.toPublicData(savedGroupe, 1) };
   }
 
-  async findOne(groupeId: number, userId?: number) {
+  async findOne(groupeId: number, userId?: number, userType: string = 'User') {
     const groupe = await this.groupeRepository.findOne({ where: { id: groupeId }, relations: ['profil'] });
     if (!groupe) throw new NotFoundException('Groupe non trouvé');
     const membresCount = await this.groupeRepository.countMembres(groupeId);
     const creator = await this.groupePolymorphicService.getCreateur(groupe);
-    const userRole = userId ? await this.groupeRepository.getMembreRole(groupeId, userId) : null;
+    const userRole = userId ? await this.groupeRepository.getMembreRole(groupeId, userId, userType) : null;
     return { ...this.groupeMapper.toDetailedData(groupe, membresCount, groupe.profil, creator), userRole };
   }
 
-  async update(groupeId: number, updateGroupeDto: UpdateGroupeDto, userId: number) {
+  async update(groupeId: number, updateGroupeDto: UpdateGroupeDto, userId: number, userType: string = 'User') {
     const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
     if (!groupe) throw new NotFoundException('Groupe non trouvé');
-    const role = await this.groupeRepository.getMembreRole(groupeId, userId);
+    const role = await this.groupeRepository.getMembreRole(groupeId, userId, userType);
     if (role !== MembreRole.ADMIN) throw new ForbiddenException('Seuls les admins peuvent modifier');
     Object.assign(groupe, { ...(updateGroupeDto.nom && { nom: updateGroupeDto.nom }), ...(updateGroupeDto.description !== undefined && { description: updateGroupeDto.description }) });
     await this.groupeRepository.save(groupe);
@@ -103,7 +103,7 @@ export class GroupeService {
   }
 
   async getUserGroupes(userId: number, userType: string = 'User') {
-    const groupes = await this.groupeRepository.findByUserId(userId);
+    const groupes = await this.groupeRepository.findByUserId(userId, userType);
     const result = await Promise.all(groupes.map(async (groupe) => {
       // Vérifier si l'utilisateur est le créateur du groupe
       const isCreator = groupe.created_by_id === userId && groupe.created_by_type === userType;
@@ -111,7 +111,7 @@ export class GroupeService {
       const isDesignatedAdmin = groupe.admin_user_id === userId;
 
       // Récupérer le rôle depuis groupe_users
-      let myRole = await this.groupeRepository.getMembreRole(groupe.id, userId);
+      let myRole = await this.groupeRepository.getMembreRole(groupe.id, userId, userType);
 
       // Si le créateur ou admin désigné, forcer le rôle à 'admin'
       if (isCreator || isDesignatedAdmin) {
@@ -121,6 +121,18 @@ export class GroupeService {
       return {
         ...this.groupeMapper.toPublicData(groupe, await this.groupeRepository.countMembres(groupe.id)),
         myRole,
+      };
+    }));
+    return { total: result.length, groupes: result };
+  }
+
+  async getCreatedGroupes(creatorId: number, creatorType: string) {
+    const groupes = await this.groupeRepository.findByCreator(creatorId, creatorType);
+    const result = await Promise.all(groupes.map(async (groupe) => {
+      const membresCount = await this.groupeRepository.countMembres(groupe.id);
+      return {
+        ...this.groupeMapper.toPublicData(groupe, membresCount),
+        myRole: 'admin',
       };
     }));
     return { total: result.length, groupes: result };
@@ -247,14 +259,14 @@ export class GroupeService {
     return { message: 'Invitation refusée' };
   }
 
-  async leaveGroupe(groupeId: number, userId: number) {
-    if (!(await this.groupeRepository.isUserMembre(groupeId, userId))) throw new BadRequestException('Non membre');
-    await this.groupeUserRepository.delete({ groupe_id: groupeId, member_id: userId, member_type: 'User' });
+  async leaveGroupe(groupeId: number, userId: number, userType: string = 'User') {
+    if (!(await this.groupeRepository.isMembre(groupeId, userId, userType))) throw new BadRequestException('Non membre');
+    await this.groupeUserRepository.delete({ groupe_id: groupeId, member_id: userId, member_type: userType });
     return { message: 'Groupe quitté' };
   }
 
-  async updateMembreRole(groupeId: number, targetUserId: number, updateRoleDto: UpdateMembreRoleDto, adminUserId: number) {
-    if ((await this.groupeRepository.getMembreRole(groupeId, adminUserId)) !== MembreRole.ADMIN) throw new ForbiddenException('Admin uniquement');
+  async updateMembreRole(groupeId: number, targetUserId: number, updateRoleDto: UpdateMembreRoleDto, adminUserId: number, adminType: string = 'User') {
+    if ((await this.groupeRepository.getMembreRole(groupeId, adminUserId, adminType)) !== MembreRole.ADMIN) throw new ForbiddenException('Admin uniquement');
     const groupeUser = await this.groupeUserRepository.findOne({ where: { groupe_id: groupeId, member_id: targetUserId, member_type: 'User' } });
     if (!groupeUser) throw new NotFoundException('Membre non trouvé');
     groupeUser.role = updateRoleDto.role;
@@ -265,11 +277,11 @@ export class GroupeService {
   /**
    * Supprimer un groupe (admin uniquement)
    */
-  async deleteGroupe(groupeId: number, userId: number) {
+  async deleteGroupe(groupeId: number, userId: number, userType: string = 'User') {
     const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
     if (!groupe) throw new NotFoundException('Groupe non trouvé');
 
-    const role = await this.groupeRepository.getMembreRole(groupeId, userId);
+    const role = await this.groupeRepository.getMembreRole(groupeId, userId, userType);
     if (role !== MembreRole.ADMIN) {
       throw new ForbiddenException('Seuls les admins peuvent supprimer le groupe');
     }
@@ -323,8 +335,8 @@ export class GroupeService {
   /**
    * Expulser un membre du groupe (admin uniquement)
    */
-  async removeMembre(groupeId: number, targetUserId: number, adminUserId: number) {
-    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId);
+  async removeMembre(groupeId: number, targetUserId: number, adminUserId: number, adminType: string = 'User') {
+    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId, adminType);
     if (role !== MembreRole.ADMIN) {
       throw new ForbiddenException('Seuls les admins peuvent expulser des membres');
     }
@@ -347,8 +359,8 @@ export class GroupeService {
   /**
    * Suspendre un membre (admin uniquement)
    */
-  async suspendMembre(groupeId: number, targetUserId: number, adminUserId: number) {
-    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId);
+  async suspendMembre(groupeId: number, targetUserId: number, adminUserId: number, adminType: string = 'User') {
+    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId, adminType);
     if (role !== MembreRole.ADMIN) {
       throw new ForbiddenException('Seuls les admins peuvent suspendre des membres');
     }
@@ -373,8 +385,8 @@ export class GroupeService {
   /**
    * Bannir un membre définitivement (admin uniquement)
    */
-  async banMembre(groupeId: number, targetUserId: number, adminUserId: number) {
-    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId);
+  async banMembre(groupeId: number, targetUserId: number, adminUserId: number, adminType: string = 'User') {
+    const role = await this.groupeRepository.getMembreRole(groupeId, adminUserId, adminType);
     if (role !== MembreRole.ADMIN) {
       throw new ForbiddenException('Seuls les admins peuvent bannir des membres');
     }
@@ -518,11 +530,12 @@ export class GroupeService {
       couleur_theme?: string;
     },
     userId: number,
+    userType: string = 'User',
   ) {
     const groupe = await this.groupeRepository.findOne({ where: { id: groupeId } });
     if (!groupe) throw new NotFoundException('Groupe non trouvé');
 
-    const role = await this.groupeRepository.getMembreRole(groupeId, userId);
+    const role = await this.groupeRepository.getMembreRole(groupeId, userId, userType);
     if (role !== MembreRole.ADMIN) {
       throw new ForbiddenException('Seuls les admins peuvent modifier le profil');
     }

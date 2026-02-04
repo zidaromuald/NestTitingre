@@ -22,12 +22,12 @@ export class GroupeRepository extends Repository<Groupe> {
   }
 
   /**
-   * Trouver les groupes d'un utilisateur
+   * Trouver les groupes d'un membre (User ou Societe)
    */
-  async findByUserId(userId: number): Promise<Groupe[]> {
+  async findByUserId(userId: number, memberType: string = 'User'): Promise<Groupe[]> {
     return this.createQueryBuilder('groupe')
       .innerJoin('groupe_users', 'gu', 'gu.groupe_id = groupe.id')
-      .where('gu.member_id = :userId AND gu.member_type = :memberType', { userId, memberType: 'User' })
+      .where('gu.member_id = :userId AND gu.member_type = :memberType', { userId, memberType })
       .orderBy('gu.joined_at', 'DESC')
       .getMany();
   }
@@ -115,16 +115,16 @@ export class GroupeRepository extends Repository<Groupe> {
   }
 
   /**
-   * Récupérer le rôle d'un membre dans un groupe
+   * Récupérer le rôle d'un membre (User ou Societe) dans un groupe
    */
-  async getMembreRole(groupeId: number, userId: number): Promise<string | null> {
+  async getMembreRole(groupeId: number, userId: number, memberType: string = 'User'): Promise<string | null> {
     const groupeUser = await this.dataSource
       .getRepository(GroupeUser)
       .findOne({
         where: {
           groupe_id: groupeId,
           member_id: userId,
-          member_type: 'User',
+          member_type: memberType,
         },
       });
     return groupeUser?.role || null;

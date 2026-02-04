@@ -59,6 +59,20 @@ export class GroupeController {
   }
 
   /**
+   * Récupérer les groupes créés par l'utilisateur/société connecté
+   * GET /groupes/created
+   */
+  @Get('created')
+  @UseGuards(JwtAuthGuard)
+  async getCreatedGroupes(@Request() req: any) {
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Authentification requise');
+    }
+    const userType = req.user.userType === 'user' ? 'User' : 'Societe';
+    return this.groupeService.getCreatedGroupes(req.user.id, userType);
+  }
+
+  /**
    * Rechercher des groupes
    * GET /groupes/search/query?q=mot
    */
@@ -74,7 +88,8 @@ export class GroupeController {
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
     const userId = req.user?.id;
-    return this.groupeService.findOne(id, userId);
+    const userType = req.user?.userType === 'user' ? 'User' : req.user?.userType === 'societe' ? 'Societe' : 'User';
+    return this.groupeService.findOne(id, userId, userType);
   }
 
   /**
@@ -87,9 +102,10 @@ export class GroupeController {
     if (!req.user || !req.user.id) {
       throw new UnauthorizedException('Authentification requise');
     }
+    const userType = req.user.userType === 'user' ? 'User' : 'Societe';
     return {
       success: true,
-      isMember: await this.groupeService['groupeRepository'].isUserMembre(id, req.user.id),
+      isMember: await this.groupeService['groupeRepository'].isMembre(id, req.user.id, userType),
     };
   }
 
@@ -103,7 +119,8 @@ export class GroupeController {
     if (!req.user || !req.user.id) {
       throw new UnauthorizedException('Authentification requise');
     }
-    const role = await this.groupeService['groupeRepository'].getMembreRole(id, req.user.id);
+    const userType = req.user.userType === 'user' ? 'User' : 'Societe';
+    const role = await this.groupeService['groupeRepository'].getMembreRole(id, req.user.id, userType);
     return {
       success: true,
       role,
@@ -124,7 +141,8 @@ export class GroupeController {
     if (!req.user || !req.user.id) {
       throw new UnauthorizedException('Authentification requise');
     }
-    return this.groupeService.update(id, updateGroupeDto, req.user.id);
+    const userType = req.user.userType === 'user' ? 'User' : 'Societe';
+    return this.groupeService.update(id, updateGroupeDto, req.user.id, userType);
   }
 
   /**
@@ -138,7 +156,8 @@ export class GroupeController {
     if (!req.user || !req.user.id) {
       throw new UnauthorizedException('Authentification requise');
     }
-    return this.groupeService.leaveGroupe(id, req.user.id);
+    const userType = req.user.userType === 'user' ? 'User' : 'Societe';
+    return this.groupeService.leaveGroupe(id, req.user.id, userType);
   }
 
   /**
@@ -152,6 +171,7 @@ export class GroupeController {
     if (!req.user || !req.user.id) {
       throw new UnauthorizedException('Authentification requise');
     }
-    return this.groupeService.deleteGroupe(id, req.user.id);
+    const userType = req.user.userType === 'user' ? 'User' : 'Societe';
+    return this.groupeService.deleteGroupe(id, req.user.id, userType);
   }
 }
