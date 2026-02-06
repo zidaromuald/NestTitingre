@@ -7,8 +7,6 @@ import { UpdateTransactionPartenaritDto } from '../dto/update-transaction-parten
 import { ValidateTransactionDto } from '../dto/validate-transaction.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { User } from '../../users/entities/user.entity';
-import { Societe } from '../../societes/entities/societe.entity';
 
 @Controller('transactions-partenariat')
 @UseGuards(JwtAuthGuard)
@@ -25,10 +23,10 @@ export class TransactionPartenaritController {
   @Post()
   async createTransaction(
     @Body() dto: CreateTransactionPartenaritDto,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
-    // Vérifier que c'est une Societe
-    if (currentUser instanceof User) {
+    // Vérifier que c'est une Societe (JWT userType = 'societe')
+    if (currentUser?.userType !== 'societe') {
       throw new ForbiddenException('Seule la Société peut créer des transactions');
     }
 
@@ -42,21 +40,19 @@ export class TransactionPartenaritController {
   }
 
   /**
-   * Récupérer les transactions d'une page (Société uniquement)
+   * Récupérer les transactions d'une page (User OU Société peut accéder)
    * GET /transactions-partenariat/page/:pageId
    */
   @Get('page/:pageId')
   async getTransactionsForPage(
     @Param('pageId', ParseIntPipe) pageId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
-    // Vérifier que c'est une Societe
-    if (currentUser instanceof User) {
-      throw new ForbiddenException('Seule la Société peut accéder à cette route. Les Users doivent utiliser /transactions-partenariat/pending');
-    }
+    // Les deux peuvent accéder aux transactions de leur page
+    const actorId = currentUser.id;
+    const actorType = currentUser?.userType === 'user' ? 'User' : 'Societe';
 
-    const societeId = currentUser.id;
-    const transactions = await this.transactionService.getTransactionsForSociete(societeId, pageId);
+    const transactions = await this.transactionService.getTransactionsForPage(pageId, actorId, actorType);
     const data = transactions.map((t) => this.transactionMapper.toPublicData(t));
     return {
       success: true,
@@ -70,9 +66,9 @@ export class TransactionPartenaritController {
    * GET /transactions-partenariat/pending
    */
   @Get('pending')
-  async getPendingTransactions(@CurrentUser() currentUser: User | Societe) {
-    // Vérifier que c'est un User
-    if (!(currentUser instanceof User)) {
+  async getPendingTransactions(@CurrentUser() currentUser: any) {
+    // Vérifier que c'est un User (JWT userType = 'user')
+    if (currentUser?.userType !== 'user') {
       throw new ForbiddenException('Seul un User peut accéder aux transactions en attente de validation');
     }
 
@@ -91,9 +87,9 @@ export class TransactionPartenaritController {
    * GET /transactions-partenariat/pending/count
    */
   @Get('pending/count')
-  async countPending(@CurrentUser() currentUser: User | Societe) {
-    // Vérifier que c'est un User
-    if (!(currentUser instanceof User)) {
+  async countPending(@CurrentUser() currentUser: any) {
+    // Vérifier que c'est un User (JWT userType = 'user')
+    if (currentUser?.userType !== 'user') {
       throw new ForbiddenException('Seul un User peut compter les transactions en attente');
     }
 
@@ -112,10 +108,10 @@ export class TransactionPartenaritController {
   @Get(':id')
   async getTransactionById(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const userType = currentUser?.userType === 'user' ? 'User' : 'Societe';
     const transaction = await this.transactionService.getTransactionById(id, userId, userType);
     return {
       success: true,
@@ -131,10 +127,10 @@ export class TransactionPartenaritController {
   async updateTransaction(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTransactionPartenaritDto,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     // Vérifier que c'est une Societe
-    if (currentUser instanceof User) {
+    if (currentUser?.userType !== 'societe') {
       throw new ForbiddenException('Seule la Société peut modifier des transactions');
     }
 
@@ -155,10 +151,10 @@ export class TransactionPartenaritController {
   async validateTransaction(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ValidateTransactionDto,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     // Vérifier que c'est un User
-    if (!(currentUser instanceof User)) {
+    if (currentUser?.userType !== 'user') {
       throw new ForbiddenException('Seul un User peut valider des transactions');
     }
 
@@ -178,10 +174,10 @@ export class TransactionPartenaritController {
   @Delete(':id')
   async deleteTransaction(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     // Vérifier que c'est une Societe
-    if (currentUser instanceof User) {
+    if (currentUser?.userType !== 'societe') {
       throw new ForbiddenException('Seule la Société peut supprimer des transactions');
     }
 

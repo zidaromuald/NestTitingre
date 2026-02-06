@@ -82,6 +82,36 @@ export class TransactionPartenaritService {
   }
 
   /**
+   * Récupérer toutes les transactions d'une page (User OU Société)
+   * Vérifie que l'acteur a accès à cette page
+   */
+  async getTransactionsForPage(
+    pagePartenaritId: number,
+    actorId: number,
+    actorType: 'User' | 'Societe',
+  ): Promise<TransactionPartenariat[]> {
+    const page = await this.pageRepo.findOne({
+      where: { id: pagePartenaritId },
+      relations: ['abonnement'],
+    });
+
+    if (!page) {
+      throw new NotFoundException('PagePartenariat introuvable');
+    }
+
+    // Vérifier l'accès : soit le User de l'abonnement, soit la Société
+    const hasAccess =
+      (actorType === 'User' && page.abonnement.user_id === actorId) ||
+      (actorType === 'Societe' && page.abonnement.societe_id === actorId);
+
+    if (!hasAccess) {
+      throw new ForbiddenException('Accès refusé à cette page');
+    }
+
+    return this.transactionPartenaritRepository.findByPagePartenariatId(pagePartenaritId);
+  }
+
+  /**
    * Récupérer les transactions en attente de validation pour un User
    */
   async getPendingTransactionsForUser(userId: number): Promise<TransactionPartenariat[]> {

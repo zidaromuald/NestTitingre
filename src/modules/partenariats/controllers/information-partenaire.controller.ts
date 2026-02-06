@@ -6,8 +6,6 @@ import { CreateInformationPartenaireDto } from '../dto/create-information-parten
 import { UpdateInformationPartenaireDto } from '../dto/update-information-partenaire.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { User } from '../../users/entities/user.entity';
-import { Societe } from '../../societes/entities/societe.entity';
 
 @Controller('informations-partenaires')
 @UseGuards(JwtAuthGuard)
@@ -24,10 +22,10 @@ export class InformationPartenaireController {
   @Post()
   async createInformation(
     @Body() dto: CreateInformationPartenaireDto,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const userType = currentUser?.userType === 'user' ? 'User' : 'Societe';
     const information = await this.informationService.createInformation(userId, userType, dto);
     return {
       success: true,
@@ -43,10 +41,10 @@ export class InformationPartenaireController {
   @Get('page/:pageId')
   async getInformationsForPage(
     @Param('pageId', ParseIntPipe) pageId: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const userType = currentUser?.userType === 'user' ? 'User' : 'Societe';
     const informations = await this.informationService.getInformationsForPage(pageId, userId, userType);
     const data = informations.map((i) => this.informationMapper.toPublicData(i));
     return {
@@ -63,10 +61,10 @@ export class InformationPartenaireController {
   @Get(':id')
   async getInformationById(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const userType = currentUser?.userType === 'user' ? 'User' : 'Societe';
     const information = await this.informationService.getInformationById(id, userId, userType);
     return {
       success: true,
@@ -82,10 +80,10 @@ export class InformationPartenaireController {
   async updateInformation(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateInformationPartenaireDto,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const userType = currentUser?.userType === 'user' ? 'User' : 'Societe';
     const information = await this.informationService.updateInformation(id, userId, userType, dto);
     return {
       success: true,
@@ -101,10 +99,10 @@ export class InformationPartenaireController {
   @Delete(':id')
   async deleteInformation(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() currentUser: User | Societe,
+    @CurrentUser() currentUser: any,
   ) {
     const userId = currentUser.id;
-    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    const userType = currentUser?.userType === 'user' ? 'User' : 'Societe';
     await this.informationService.deleteInformation(id, userId, userType);
     return {
       success: true,
