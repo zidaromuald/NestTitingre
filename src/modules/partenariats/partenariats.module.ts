@@ -11,8 +11,10 @@ import { InformationPartenaireRepository } from './repositories/information-part
 import { PagePartenaritMapper } from './mappers/page-partenariat.mapper';
 import { TransactionPartenaritMapper } from './mappers/transaction-partenariat.mapper';
 import { InformationPartenaireMapper } from './mappers/information-partenaire.mapper';
+import { PagePartenaritService } from './services/page-partenariat.service';
 import { TransactionPartenaritService } from './services/transaction-partenariat.service';
 import { InformationPartenaireService } from './services/information-partenaire.service';
+import { PagePartenaritController } from './controllers/page-partenariat.controller';
 import { TransactionPartenaritController } from './controllers/transaction-partenariat.controller';
 import { InformationPartenaireController } from './controllers/information-partenaire.controller';
 
@@ -35,10 +37,12 @@ import { InformationPartenaireController } from './controllers/information-parte
     TransactionPartenaritMapper,
     InformationPartenaireMapper,
     // Services
+    PagePartenaritService,
     TransactionPartenaritService,
     InformationPartenaireService,
   ],
   controllers: [
+    PagePartenaritController,
     TransactionPartenaritController,
     InformationPartenaireController,
   ],
@@ -53,6 +57,7 @@ import { InformationPartenaireController } from './controllers/information-parte
     TransactionPartenaritMapper,
     InformationPartenaireMapper,
     // Services
+    PagePartenaritService,
     TransactionPartenaritService,
     InformationPartenaireService,
   ],
