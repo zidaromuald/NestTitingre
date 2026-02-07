@@ -50,6 +50,14 @@ export class SocieteController {
    */
   @Get('search')
   async search(@Query(ValidationPipe) searchDto: SearchSocieteDto) {
+    // Mapper les alias frontend: q → nomSociete, limit → perPage
+    if (searchDto.q && !searchDto.nomSociete) {
+      searchDto.nomSociete = searchDto.q;
+    }
+    if (searchDto.limit && !searchDto.perPage) {
+      searchDto.perPage = searchDto.limit;
+    }
+
     const result = await this.societeService.search(searchDto);
     return {
       message: 'Recherche effectuée avec succès',
