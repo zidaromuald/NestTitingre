@@ -39,7 +39,7 @@ export class SocieteRepository extends Repository<Societe> {
 
     // Filtres de recherche
     if (nomSociete) {
-      query.andWhere('societe.nom_societe LIKE :nom_societe', {
+      query.andWhere('societe.nom_societe ILIKE :nom_societe', {
         nom_societe: `%${nomSociete}%`,
       });
     }
@@ -52,19 +52,19 @@ export class SocieteRepository extends Repository<Societe> {
     }
 
     if (typeProduit) {
-      query.andWhere('societe.type_produit LIKE :typeProduit', {
+      query.andWhere('societe.type_produit ILIKE :typeProduit', {
         typeProduit: `%${typeProduit}%`,
       });
     }
 
     if (centreInteret) {
-      query.andWhere('societe.centre_interet LIKE :centreInteret', {
+      query.andWhere('societe.centre_interet ILIKE :centreInteret', {
         centreInteret: `%${centreInteret}%`,
       });
     }
 
     if (adresse) {
-      query.andWhere('societe.adresse LIKE :adresse', {
+      query.andWhere('societe.adresse ILIKE :adresse', {
         adresse: `%${adresse}%`,
       });
     }
@@ -104,7 +104,7 @@ export class SocieteRepository extends Repository<Societe> {
 
   async searchByName(q: string): Promise<Societe[]> {
     return this.createQueryBuilder('societe')
-      .where('societe.nom_societe LIKE :q', { q: `${q}%` })
+      .where('societe.nom_societe ILIKE :q', { q: `${q}%` })
       .andWhere('societe.email_verified_at IS NOT NULL')
       .select([
         'societe.id',
@@ -129,7 +129,7 @@ export class SocieteRepository extends Repository<Societe> {
       // Utilise l'index composé ['secteur_activite', 'type_produit']
       query
         .where('societe.secteur_activite = :secteur', { secteur })
-        .andWhere('societe.type_produit LIKE :produit', {
+        .andWhere('societe.type_produit ILIKE :produit', {
           produit: `%${produit}%`,
         });
     } else {
@@ -138,20 +138,20 @@ export class SocieteRepository extends Repository<Societe> {
         query.where('societe.secteur_activite = :secteur', { secteur });
       }
       if (produit) {
-        query.andWhere('societe.type_produit LIKE :produit', {
+        query.andWhere('societe.type_produit ILIKE :produit', {
           produit: `%${produit}%`,
         });
       }
     }
 
     if (interet) {
-      query.andWhere('societe.centre_interet LIKE :interet', {
+      query.andWhere('societe.centre_interet ILIKE :interet', {
         interet: `%${interet}%`,
       });
     }
 
     if (ville) {
-      query.andWhere('societe.adresse LIKE :ville', {
+      query.andWhere('societe.adresse ILIKE :ville', {
         ville: `%${ville}%`,
       });
     }
@@ -178,11 +178,11 @@ export class SocieteRepository extends Repository<Societe> {
     return this.createQueryBuilder('societe')
       .where(
         new Brackets((qb) => {
-          qb.where('societe.nom_societe LIKE :term', { term: `${term}%` })
-            .orWhere('societe.secteur_activite LIKE :term', {
+          qb.where('societe.nom_societe ILIKE :term', { term: `${term}%` })
+            .orWhere('societe.secteur_activite ILIKE :term', {
               term: `${term}%`,
             })
-            .orWhere('societe.type_produit LIKE :term', { term: `${term}%` });
+            .orWhere('societe.type_produit ILIKE :term', { term: `${term}%` });
         }),
       )
       .andWhere('societe.email_verified_at IS NOT NULL')

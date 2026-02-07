@@ -44,15 +44,15 @@ export class UserRepository extends Repository<User> {
 
     // Filtres de recherche
     if (nom) {
-      query.andWhere('user.nom LIKE :nom', { nom: `%${nom}%` });
+      query.andWhere('user.nom ILIKE :nom', { nom: `%${nom}%` });
     }
 
     if (prenom) {
-      query.andWhere('user.prenom LIKE :prenom', { prenom: `%${prenom}%` });
+      query.andWhere('user.prenom ILIKE :prenom', { prenom: `%${prenom}%` });
     }
 
     if (activite) {
-      query.andWhere('user.activite LIKE :activite', {
+      query.andWhere('user.activite ILIKE :activite', {
         activite: `%${activite}%`,
       });
     }
@@ -118,9 +118,9 @@ export class UserRepository extends Repository<User> {
     const query = this.createQueryBuilder('user')
       .where(
         new Brackets((qb) => {
-          qb.where('user.nom LIKE :term', { term: `${term}%` })
-            .orWhere('user.prenom LIKE :term', { term: `${term}%` })
-            .orWhere('user.activite LIKE :term', { term: `${term}%` });
+          qb.where('user.nom ILIKE :term', { term: `${term}%` })
+            .orWhere('user.prenom ILIKE :term', { term: `${term}%` })
+            .orWhere('user.activite ILIKE :term', { term: `${term}%` });
         }),
       );
 

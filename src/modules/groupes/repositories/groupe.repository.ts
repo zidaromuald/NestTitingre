@@ -15,7 +15,7 @@ export class GroupeRepository extends Repository<Groupe> {
    */
   async searchByNom(query: string, limit: number = 20): Promise<Groupe[]> {
     return this.createQueryBuilder('groupe')
-      .where('groupe.nom LIKE :query', { query: `%${query}%` })
+      .where('groupe.nom ILIKE:query', { query: `%${query}%` })
       .orderBy('groupe.created_at', 'DESC')
       .limit(limit)
       .getMany();
@@ -143,7 +143,7 @@ export class GroupeRepository extends Repository<Groupe> {
     const query = this.createQueryBuilder('groupe');
 
     if (filters.nom) {
-      query.andWhere('groupe.nom LIKE :nom', { nom: `%${filters.nom}%` });
+      query.andWhere('groupe.nom ILIKE:nom', { nom: `%${filters.nom}%` });
     }
 
     if (filters.type) {
