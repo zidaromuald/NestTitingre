@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Recherche insensible a la casse \\(LIKE -> ILIKE\\) pour PostgreSQL\n\nLes recherches de users, societes et groupes utilisaient LIKE qui est\nsensible a la casse dans PostgreSQL. Remplace par ILIKE pour que\n\"zida\" trouve aussi \"ZIDA\".\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []
