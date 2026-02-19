@@ -20,10 +20,18 @@ export const MEDIA_TYPE_CONFIG = {
     extensions: ['.mp4', '.mpeg', '.webm', '.mov'],
   },
   [MediaType.AUDIO]: {
-    allowedMimeTypes: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg'],
+    allowedMimeTypes: [
+      'audio/mpeg',   // .mp3
+      'audio/mp3',    // .mp3 (variante non-standard mais courante)
+      'audio/wav',    // .wav
+      'audio/ogg',    // .ogg (OGG/Opus - enregistrement vocal groupes)
+      'audio/aac',    // .aac (AAC - enregistrement vocal posts)
+      'audio/mp4',    // .m4a
+      'audio/x-m4a',  // .m4a (variante Apple)
+    ],
     maxSize: 10 * 1024 * 1024, // 10MB
     destination: './uploads/audios',
-    extensions: ['.mp3', '.mpeg', '.wav', '.ogg'],
+    extensions: ['.mp3', '.wav', '.ogg', '.aac', '.m4a'],
   },
   [MediaType.DOCUMENT]: {
     allowedMimeTypes: [
