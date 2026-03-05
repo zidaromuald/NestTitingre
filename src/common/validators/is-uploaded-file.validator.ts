@@ -53,19 +53,19 @@ function isValidUploadUrl(url: string): boolean {
   }
 
   // Pattern pour chemin relatif (RECOMMANDÉ - à stocker en BDD)
-  const relativePattern = /^uploads\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|pdf|doc|docx|xls|xlsx|txt)$/i;
+  const relativePattern = /^uploads\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|aac|m4a|pdf|doc|docx|xls|xlsx|txt)$/i;
 
   // Pattern pour les URLs d'upload locales (rétrocompatibilité)
-  const localPattern = /^http:\/\/localhost:\d+\/uploads\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|pdf|doc|docx|xls|xlsx|txt)$/i;
+  const localPattern = /^http:\/\/localhost:\d+\/uploads\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|aac|m4a|pdf|doc|docx|xls|xlsx|txt)$/i;
 
   // Pattern pour les URLs de production (rétrocompatibilité)
-  const productionPattern = /^https?:\/\/.+\/uploads\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|pdf|doc|docx|xls|xlsx|txt)$/i;
+  const productionPattern = /^https?:\/\/.+\/uploads\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|aac|m4a|pdf|doc|docx|xls|xlsx|txt)$/i;
 
   // Pattern pour Cloudflare R2 URLs (format: https://pub-xxx.r2.dev/images/image-xxx.ext)
-  const cloudflareR2Pattern = /^https:\/\/pub-[a-f0-9]+\.r2\.dev\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|pdf|doc|docx|xls|xlsx|txt)$/i;
+  const cloudflareR2Pattern = /^https:\/\/pub-[a-f0-9]+\.r2\.dev\/(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|aac|m4a|pdf|doc|docx|xls|xlsx|txt)$/i;
 
   // Pattern pour clés R2 (format: images/image-xxx.ext - sans le domaine)
-  const r2KeyPattern = /^(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|pdf|doc|docx|xls|xlsx|txt)$/i;
+  const r2KeyPattern = /^(images|videos|audios|documents)\/.+\.(jpg|jpeg|png|gif|webp|mp4|mpeg|webm|mov|mp3|wav|ogg|aac|m4a|pdf|doc|docx|xls|xlsx|txt)$/i;
 
   // Accepte: chemin relatif OU URLs complètes OU URLs Cloudflare R2 OU clés R2
   return (
