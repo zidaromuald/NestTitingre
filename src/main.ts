@@ -19,9 +19,9 @@ async function bootstrap() {
     }),
   );
 
-  // Configuration des fichiers statiques (uploads) - Uniquement en développement
-  // En production, les fichiers sont sur Cloudinary, pas besoin de servir ./uploads
-  if (!isProduction) {
+  // Servir les fichiers statiques uploadés si le storage est local (dev ET prod sans R2)
+  const storageProvider = process.env.STORAGE_PROVIDER || 'local';
+  if (storageProvider !== 'r2') {
     await app.register(fastifyStatic, {
       root: join(__dirname, '..', 'uploads'),
       prefix: '/uploads/',
