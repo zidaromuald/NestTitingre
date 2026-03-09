@@ -29,7 +29,7 @@ export const MEDIA_TYPE_CONFIG = {
       'audio/mp4',    // .m4a
       'audio/x-m4a',  // .m4a (variante Apple)
     ],
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024, 
     destination: './uploads/audios',
     extensions: ['.mp3', '.wav', '.ogg', '.aac', '.m4a'],
   },
