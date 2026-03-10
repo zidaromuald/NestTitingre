@@ -49,4 +49,8 @@ export class CreateTransactionPartenaritDto {
 
   @IsOptional()
   metadata?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  localite?: string;
 }

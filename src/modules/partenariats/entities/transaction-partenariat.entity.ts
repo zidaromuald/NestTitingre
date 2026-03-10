@@ -95,6 +95,9 @@ export class TransactionPartenariat {
   @Column({ type: 'text', nullable: true })
   notes: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  localite: string; // Ex: "Ouagadougou", "Bobo-Dioulasso"
+
   @Column({ type: 'text', nullable: true })
   commentaire_user: string; // Commentaire du User lors validation
 

@@ -44,4 +44,8 @@ export class UpdateTransactionPartenaritDto {
 
   @IsOptional()
   metadata?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  localite?: string;
 }

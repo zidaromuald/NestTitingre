@@ -24,6 +24,7 @@ export class TransactionPartenaritMapper {
       commentaire_user: transaction.commentaire_user,
       creee_par_societe: transaction.creee_par_societe,
       metadata: transaction.metadata,
+      localite: transaction.localite ?? null,
       created_at: transaction.created_at,
       updated_at: transaction.updated_at,
       page: page
