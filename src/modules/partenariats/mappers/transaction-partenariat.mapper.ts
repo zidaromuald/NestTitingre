@@ -38,6 +38,15 @@ export class TransactionPartenaritMapper {
       peut_etre_validee: transaction.canBeValidatedByUser(),
       is_en_attente: transaction.isPendingValidation(),
       is_validee: transaction.isValidated(),
+      societe: transaction.pagePartenariat?.abonnement?.societe
+        ? { nom: transaction.pagePartenariat.abonnement.societe.nom_societe }
+        : undefined,
+      user: transaction.pagePartenariat?.abonnement?.user
+        ? {
+            nom: transaction.pagePartenariat.abonnement.user.nom,
+            prenom: transaction.pagePartenariat.abonnement.user.prenom,
+          }
+        : undefined,
     };
   }
 

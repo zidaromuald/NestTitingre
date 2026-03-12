@@ -15,7 +15,12 @@ export class TransactionPartenaritRepository extends Repository<TransactionParte
   async findByPagePartenariatId(pagePartenaritId: number): Promise<TransactionPartenariat[]> {
     return this.find({
       where: { page_partenariat_id: pagePartenaritId },
-      relations: ['pagePartenariat', 'pagePartenariat.abonnement'],
+      relations: [
+        'pagePartenariat',
+        'pagePartenariat.abonnement',
+        'pagePartenariat.abonnement.user',
+        'pagePartenariat.abonnement.societe',
+      ],
       order: { created_at: 'DESC' },
     });
   }
@@ -27,6 +32,8 @@ export class TransactionPartenaritRepository extends Repository<TransactionParte
     return this.createQueryBuilder('transaction')
       .innerJoinAndSelect('transaction.pagePartenariat', 'page')
       .innerJoinAndSelect('page.abonnement', 'abonnement')
+      .leftJoinAndSelect('abonnement.user', 'user')
+      .leftJoinAndSelect('abonnement.societe', 'societe')
       .where('abonnement.user_id = :userId', { userId })
       .andWhere('transaction.statut = :statut', {
         statut: TransactionPartenaritStatut.PENDING_VALIDATION,
@@ -71,7 +78,12 @@ export class TransactionPartenaritRepository extends Repository<TransactionParte
   async findByIdWithRelations(id: number): Promise<TransactionPartenariat | null> {
     return this.findOne({
       where: { id },
-      relations: ['pagePartenariat', 'pagePartenariat.abonnement'],
+      relations: [
+        'pagePartenariat',
+        'pagePartenariat.abonnement',
+        'pagePartenariat.abonnement.user',
+        'pagePartenariat.abonnement.societe',
+      ],
     });
   }
 
