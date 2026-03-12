@@ -139,7 +139,7 @@ export class GroupeService {
   }
 
   async getMembres(groupeId: number) {
-    const groupeUsers = await this.groupeUserRepository.find({ where: { groupe_id: groupeId }, relations: ['user'], order: { joined_at: 'DESC' } });
+    const groupeUsers = await this.groupeUserRepository.find({ where: { groupe_id: groupeId }, relations: ['user', 'user.profile'], order: { joined_at: 'DESC' } });
     return { total: groupeUsers.length, membres: groupeUsers.map((gu) => this.groupeMapper.toMembreData(gu, gu.user)) };
   }
 

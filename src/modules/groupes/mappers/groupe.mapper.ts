@@ -65,11 +65,21 @@ export class GroupeMapper {
    */
   toMembreData(groupeUser: GroupeUser, user: any) {
     return {
-      userId: user.id,
-      nom: user.nom,
-      prenom: user.prenom,
+      userId: user?.id ?? groupeUser.member_id,
       role: groupeUser.role,
       joinedAt: groupeUser.joined_at,
+      member_type: groupeUser.member_type,
+      user: user
+        ? {
+            id: user.id,
+            nom: user.nom,
+            prenom: user.prenom,
+            email: user.email,
+            profile: user.profile
+              ? { photo: user.profile.getPhotoUrl?.() ?? null }
+              : null,
+          }
+        : null,
     };
   }
 
