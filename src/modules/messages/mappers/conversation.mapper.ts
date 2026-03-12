@@ -72,6 +72,7 @@ export class ConversationMapper {
         prenom: user.prenom,
         email: user.email,
         activite: user.activite,
+        photo_url: (user as any).profile?.getPhotoUrl?.() ?? null,
       };
     } else {
       const societe = participant as Societe;
@@ -81,6 +82,7 @@ export class ConversationMapper {
         nom_societe: societe.nom_societe,
         email: societe.email,
         secteur_activite: societe.secteur_activite,
+        photo_url: (societe as any).profile?.getLogoUrl?.() ?? null,
       };
     }
   }

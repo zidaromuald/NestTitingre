@@ -37,15 +37,12 @@ export class ConversationRepository extends Repository<Conversation> {
    */
   async findByParticipant(participantId: number, participantType: string): Promise<Conversation[]> {
     return this.createQueryBuilder('conversation')
-      .where('conversation.participant1_id = :participantId AND conversation.participant1_type = :participantType', {
-        participantId,
-        participantType,
-      })
-      .orWhere('conversation.participant2_id = :participantId AND conversation.participant2_type = :participantType', {
-        participantId,
-        participantType,
-      })
-      .andWhere('conversation.is_archived = :isArchived', { isArchived: false })
+      .where(
+        `(conversation.participant1_id = :participantId AND conversation.participant1_type = :participantType AND conversation.participant1_archived = false)
+         OR
+         (conversation.participant2_id = :participantId AND conversation.participant2_type = :participantType AND conversation.participant2_archived = false)`,
+        { participantId, participantType },
+      )
       .orderBy('conversation.dernier_message_at', 'DESC')
       .getMany();
   }
@@ -55,15 +52,12 @@ export class ConversationRepository extends Repository<Conversation> {
    */
   async findArchivedByParticipant(participantId: number, participantType: string): Promise<Conversation[]> {
     return this.createQueryBuilder('conversation')
-      .where('conversation.participant1_id = :participantId AND conversation.participant1_type = :participantType', {
-        participantId,
-        participantType,
-      })
-      .orWhere('conversation.participant2_id = :participantId AND conversation.participant2_type = :participantType', {
-        participantId,
-        participantType,
-      })
-      .andWhere('conversation.is_archived = :isArchived', { isArchived: true })
+      .where(
+        `(conversation.participant1_id = :participantId AND conversation.participant1_type = :participantType AND conversation.participant1_archived = true)
+         OR
+         (conversation.participant2_id = :participantId AND conversation.participant2_type = :participantType AND conversation.participant2_archived = true)`,
+        { participantId, participantType },
+      )
       .orderBy('conversation.dernier_message_at', 'DESC')
       .getMany();
   }
@@ -104,15 +98,12 @@ export class ConversationRepository extends Repository<Conversation> {
    */
   async countActiveForParticipant(participantId: number, participantType: string): Promise<number> {
     return this.createQueryBuilder('conversation')
-      .where('conversation.participant1_id = :participantId AND conversation.participant1_type = :participantType', {
-        participantId,
-        participantType,
-      })
-      .orWhere('conversation.participant2_id = :participantId AND conversation.participant2_type = :participantType', {
-        participantId,
-        participantType,
-      })
-      .andWhere('conversation.is_archived = :isArchived', { isArchived: false })
+      .where(
+        `(conversation.participant1_id = :participantId AND conversation.participant1_type = :participantType AND conversation.participant1_archived = false)
+         OR
+         (conversation.participant2_id = :participantId AND conversation.participant2_type = :participantType AND conversation.participant2_archived = false)`,
+        { participantId, participantType },
+      )
       .getCount();
   }
 }

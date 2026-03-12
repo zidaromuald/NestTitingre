@@ -78,27 +78,39 @@ export class ConversationService {
   }
 
   /**
-   * Récupérer toutes les conversations d'un participant
+   * Charger une entité participant (User ou Societe) avec son profil
+   */
+  async loadParticipantEntity(id: number, type: string): Promise<User | Societe | null> {
+    if (type === 'User') {
+      return this.userRepo.findOne({ where: { id }, relations: ['profile'] });
+    } else if (type === 'Societe') {
+      return this.societeRepo.findOne({ where: { id }, relations: ['profile'] });
+    }
+    return null;
+  }
+
+  /**
+   * Récupérer toutes les conversations d'un participant avec entités participants
    */
   async getConversationsForParticipant(
     participantId: number,
     participantType: string,
-  ): Promise<{ conversation: Conversation; unreadCount: number }[]> {
+  ): Promise<{ conversation: Conversation; unreadCount: number; participant1Entity?: User | Societe; participant2Entity?: User | Societe }[]> {
     const conversations = await this.conversationRepository.findByParticipant(participantId, participantType);
 
-    // Pour chaque conversation, compter les messages non lus
-    const conversationsWithUnread = await Promise.all(
+    // Charger les entités participants et compter les messages non lus
+    const conversationsWithData = await Promise.all(
       conversations.map(async (conversation) => {
-        const unreadCount = await this.messageRepository.countUnreadByRecipient(
-          conversation.id,
-          participantId,
-          participantType,
-        );
-        return { conversation, unreadCount };
+        const [unreadCount, participant1Entity, participant2Entity] = await Promise.all([
+          this.messageRepository.countUnreadByRecipient(conversation.id, participantId, participantType),
+          this.loadParticipantEntity(conversation.participant1_id, conversation.participant1_type),
+          this.loadParticipantEntity(conversation.participant2_id, conversation.participant2_type),
+        ]);
+        return { conversation, unreadCount, participant1Entity, participant2Entity };
       }),
     );
 
-    return conversationsWithUnread;
+    return conversationsWithData;
   }
 
   /**

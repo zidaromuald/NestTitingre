@@ -53,8 +53,8 @@ export class ConversationController {
       userType,
     );
 
-    const data = conversationsWithUnread.map(({ conversation, unreadCount }) =>
-      this.conversationMapper.toPublicData(conversation, undefined, undefined, unreadCount, userId, userType),
+    const data = conversationsWithUnread.map(({ conversation, unreadCount, participant1Entity, participant2Entity }) =>
+      this.conversationMapper.toPublicData(conversation, participant1Entity, participant2Entity, unreadCount, userId, userType),
     );
 
     return {
@@ -118,7 +118,7 @@ export class ConversationController {
 
     return {
       success: true,
-      data: this.conversationMapper.toPublicData(conversation, undefined, undefined, unreadCount, userId, userType),
+      data: this.conversationMapper.toPublicData(conversation, participant1Entity, participant2Entity, unreadCount, userId, userType),
     };
   }
 
