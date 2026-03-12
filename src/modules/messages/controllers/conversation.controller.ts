@@ -114,11 +114,15 @@ export class ConversationController {
 
     const conversation = await this.conversationService.getConversationById(id, userId, userType);
 
-    const unreadCount = await this.messageService.countUnreadInConversation(id, userId, userType);
+    const [unreadCount, participant1Entity, participant2Entity] = await Promise.all([
+      this.messageService.countUnreadInConversation(id, userId, userType),
+      this.conversationService.loadParticipantEntity(conversation.participant1_id, conversation.participant1_type),
+      this.conversationService.loadParticipantEntity(conversation.participant2_id, conversation.participant2_type),
+    ]);
 
     return {
       success: true,
-      data: this.conversationMapper.toPublicData(conversation, participant1Entity, participant2Entity, unreadCount, userId, userType),
+      data: this.conversationMapper.toPublicData(conversation, participant1Entity ?? undefined, participant2Entity ?? undefined, unreadCount, userId, userType),
     };
   }
 

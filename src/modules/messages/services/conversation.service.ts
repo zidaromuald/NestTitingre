@@ -106,7 +106,7 @@ export class ConversationService {
           this.loadParticipantEntity(conversation.participant1_id, conversation.participant1_type),
           this.loadParticipantEntity(conversation.participant2_id, conversation.participant2_type),
         ]);
-        return { conversation, unreadCount, participant1Entity, participant2Entity };
+        return { conversation, unreadCount, participant1Entity: participant1Entity ?? undefined, participant2Entity: participant2Entity ?? undefined };
       }),
     );
 
