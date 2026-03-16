@@ -1,5 +1,5 @@
 // modules/messages/controllers/message-collaboration.controller.ts
-import { Controller, Get, Post, Put, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { MessageCollaborationService } from '../services/message-collaboration.service';
 import { MessageCollaborationMapper } from '../mappers/message-collaboration.mapper';
 import { SendMessageDto } from '../dto/send-message.dto';
@@ -170,5 +170,20 @@ export class MessageCollaborationController {
       data,
       meta: { count: data.length },
     };
+  }
+
+  /**
+   * Supprimer un message (uniquement l'expéditeur peut supprimer)
+   * DELETE /messages/:id
+   */
+  @Delete(':id')
+  async deleteMessage(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
+    const userId = currentUser.id;
+    const userType = currentUser instanceof User ? 'User' : 'Societe';
+    await this.messageService.deleteMessage(id, userId, userType);
+    return { success: true, message: 'Message supprimé' };
   }
 }

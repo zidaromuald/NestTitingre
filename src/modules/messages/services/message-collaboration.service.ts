@@ -204,4 +204,18 @@ export class MessageCollaborationService {
 
     return savedMessage;
   }
+
+  /**
+   * Supprimer un message (uniquement l'expéditeur)
+   */
+  async deleteMessage(messageId: number, senderId: number, senderType: string): Promise<void> {
+    const message = await this.messageRepo.findOne({ where: { id: messageId } });
+    if (!message) {
+      throw new NotFoundException('Message introuvable');
+    }
+    if (message.sender_id !== senderId || message.sender_type !== senderType) {
+      throw new ForbiddenException('Vous ne pouvez supprimer que vos propres messages');
+    }
+    await this.messageRepo.remove(message);
+  }
 }
