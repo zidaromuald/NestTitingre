@@ -9,7 +9,6 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
-  Request,
   HttpCode,
   HttpStatus,
   NotFoundException,
@@ -18,10 +17,13 @@ import {
 import { CommentairePolymorphicService } from '../services/commentaire-polymorphic.service';
 import { CreateCommentaireDto } from '../dto/create-commentaire.dto';
 import { UpdateCommentaireDto } from '../dto/update-commentaire.dto';
-// import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { User } from '../../users/entities/user.entity';
+import { Societe } from '../../societes/entities/societe.entity';
 
 @Controller('commentaires')
-// @UseGuards(JwtAuthGuard) // Décommenter quand le guard sera prêt
+@UseGuards(JwtAuthGuard)
 export class CommentaireController {
   constructor(
     private readonly commentairePolymorphicService: CommentairePolymorphicService,
@@ -35,10 +37,8 @@ export class CommentaireController {
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() createCommentaireDto: CreateCommentaireDto,
-    @Request() req: any,
+    @CurrentUser() currentUser: User | Societe,
   ) {
-    const user = req.user || { id: 1, type: 'User' }; // Mock
-
     const post =
       await this.commentairePolymorphicService['postRepository'].findOne({
         where: { id: createCommentaireDto.post_id },
@@ -49,14 +49,14 @@ export class CommentaireController {
     }
 
     const commenter =
-      user.type === 'User'
+      currentUser instanceof User
         ? await this.commentairePolymorphicService['userRepository'].findOne({
-            where: { id: user.id },
+            where: { id: currentUser.id },
           })
         : await this.commentairePolymorphicService[
             'societeRepository'
           ].findOne({
-            where: { id: user.id },
+            where: { id: currentUser.id },
           });
 
     const commentaire = await this.commentairePolymorphicService.createCommentaire(
@@ -114,10 +114,8 @@ export class CommentaireController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateCommentaireDto: UpdateCommentaireDto,
-    @Request() req: any,
+    @CurrentUser() currentUser: User | Societe,
   ) {
-    const user = req.user || { id: 1, type: 'User' }; // Mock
-
     const commentaire =
       await this.commentairePolymorphicService['commentaireRepository'].findOne(
         {
@@ -129,16 +127,15 @@ export class CommentaireController {
       throw new NotFoundException('Commentaire not found');
     }
 
-    // Vérifier que l'utilisateur peut modifier ce commentaire
     const commenter =
-      user.type === 'User'
+      currentUser instanceof User
         ? await this.commentairePolymorphicService['userRepository'].findOne({
-            where: { id: user.id },
+            where: { id: currentUser.id },
           })
         : await this.commentairePolymorphicService[
             'societeRepository'
           ].findOne({
-            where: { id: user.id },
+            where: { id: currentUser.id },
           });
 
     const canEdit = this.commentairePolymorphicService.canEditCommentaire(
@@ -173,9 +170,10 @@ export class CommentaireController {
    */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  async remove(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
-    const user = req.user || { id: 1, type: 'User' }; // Mock
-
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() currentUser: User | Societe,
+  ) {
     const commentaire =
       await this.commentairePolymorphicService['commentaireRepository'].findOne(
         {
@@ -187,16 +185,15 @@ export class CommentaireController {
       throw new NotFoundException('Commentaire not found');
     }
 
-    // Vérifier que l'utilisateur peut supprimer ce commentaire
     const commenter =
-      user.type === 'User'
+      currentUser instanceof User
         ? await this.commentairePolymorphicService['userRepository'].findOne({
-            where: { id: user.id },
+            where: { id: currentUser.id },
           })
         : await this.commentairePolymorphicService[
             'societeRepository'
           ].findOne({
-            where: { id: user.id },
+            where: { id: currentUser.id },
           });
 
     const canEdit = this.commentairePolymorphicService.canEditCommentaire(
@@ -222,16 +219,14 @@ export class CommentaireController {
    * GET /commentaires/my-comments
    */
   @Get('my-comments')
-  async getMyComments(@Request() req: any) {
-    const user = req.user || { id: 1, type: 'User' }; // Mock
-
+  async getMyComments(@CurrentUser() currentUser: User | Societe) {
     const commentaires =
-      user.type === 'User'
+      currentUser instanceof User
         ? await this.commentairePolymorphicService.getCommentairesByUser(
-            user.id,
+            currentUser.id,
           )
         : await this.commentairePolymorphicService.getCommentairesBySociete(
-            user.id,
+            currentUser.id,
           );
 
     return {
@@ -251,16 +246,14 @@ export class CommentaireController {
    * GET /commentaires/my-commented-posts
    */
   @Get('my-commented-posts')
-  async getMyCommentedPosts(@Request() req: any) {
-    const user = req.user || { id: 1, type: 'User' }; // Mock
-
+  async getMyCommentedPosts(@CurrentUser() currentUser: User | Societe) {
     const posts =
-      user.type === 'User'
+      currentUser instanceof User
         ? await this.commentairePolymorphicService.getCommentedPostsByUser(
-            user.id,
+            currentUser.id,
           )
         : await this.commentairePolymorphicService.getCommentedPostsBySociete(
-            user.id,
+            currentUser.id,
           );
 
     return {
