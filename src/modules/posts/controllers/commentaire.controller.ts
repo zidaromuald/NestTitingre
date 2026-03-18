@@ -87,22 +87,35 @@ export class CommentaireController {
         postId,
       );
 
+    const BASE_URL = 'https://api.titingre.com';
+
     return {
       total: commentairesWithAuthors.length,
-      commentaires: commentairesWithAuthors.map((item) => ({
-        id: item.commentaire.id,
-        contenu: item.commentaire.contenu,
-        created_at: item.commentaire.created_at,
-        updated_at: item.commentaire.updated_at,
-        author: {
-          id: item.author.id,
-          type: item.commentaire.commentable_type,
-          name:
-            item.commentaire.commentable_type === 'User'
-              ? `${(item.author as any).prenom} ${(item.author as any).nom}`
-              : (item.author as any).nom_societe,
-        },
-      })),
+      commentaires: commentairesWithAuthors.map((item) => {
+        const isUser = item.commentaire.commentable_type === 'User';
+        const authorAny = item.author as any;
+        const profileUrl = authorAny.profile?.getPhotoUrl?.() ?? authorAny.profile?.getLogoUrl?.() ?? null;
+
+        return {
+          id: item.commentaire.id,
+          contenu: item.commentaire.contenu,
+          created_at: item.commentaire.created_at,
+          updated_at: item.commentaire.updated_at,
+          author: {
+            id: item.author.id,
+            type: item.commentaire.commentable_type,
+            ...(isUser
+              ? {
+                  prenom: authorAny.prenom ?? '',
+                  nom: authorAny.nom ?? '',
+                }
+              : {
+                  nom_societe: authorAny.nom_societe ?? authorAny.nom ?? '',
+                }),
+            photo_url: profileUrl ? `${BASE_URL}${profileUrl}` : null,
+          },
+        };
+      }),
     };
   }
 

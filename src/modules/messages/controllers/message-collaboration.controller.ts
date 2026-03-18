@@ -50,8 +50,19 @@ export class MessageCollaborationController {
     const userId = currentUser.id;
     const userType = currentUser instanceof User ? 'User' : 'Societe';
 
-    const messages = await this.messageService.getMessagesByConversation(conversationId, userId, userType);
-    const data = messages.map((m) => this.messageMapper.toPublicData(m));
+    const { messages, participant1, participant2 } =
+      await this.messageService.getMessagesByConversationWithParticipants(conversationId, userId, userType);
+
+    const data = messages.map((m) => {
+      // Retrouver l'entité expéditeur parmi les deux participants
+      let sender: User | Societe | undefined;
+      if (participant1 && m.sender_id === participant1.id && m.sender_type === (participant1 instanceof User ? 'User' : 'Societe')) {
+        sender = participant1;
+      } else if (participant2 && m.sender_id === participant2.id && m.sender_type === (participant2 instanceof User ? 'User' : 'Societe')) {
+        sender = participant2;
+      }
+      return this.messageMapper.toPublicData(m, sender);
+    });
 
     return {
       success: true,

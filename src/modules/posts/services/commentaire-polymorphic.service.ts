@@ -187,13 +187,19 @@ export class CommentairePolymorphicService {
 
     const commentairesWithAuthors = await Promise.all(
       commentaires.map(async (commentaire) => {
-        const author = await PolymorphicHelper.morphTo<User | Societe>(
-          {
-            id: commentaire.commentable_id,
-            type: commentaire.commentable_type,
-          },
-          repositories,
-        );
+        // Charger l'auteur avec son profil (pour accéder à photo/logo)
+        let author: User | Societe | null = null;
+        if (commentaire.commentable_type === PolymorphicTypes.USER) {
+          author = await this.userRepository.findOne({
+            where: { id: commentaire.commentable_id },
+            relations: ['profile'],
+          });
+        } else {
+          author = await this.societeRepository.findOne({
+            where: { id: commentaire.commentable_id },
+            relations: ['profile'],
+          });
+        }
 
         return { commentaire, author: author! };
       }),

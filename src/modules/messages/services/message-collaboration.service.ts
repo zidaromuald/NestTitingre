@@ -79,6 +79,29 @@ export class MessageCollaborationService {
   }
 
   /**
+   * Récupérer les messages d'une conversation avec les entités expéditeurs
+   */
+  async getMessagesByConversationWithParticipants(
+    conversationId: number,
+    participantId: number,
+    participantType: string,
+  ): Promise<{
+    messages: MessageCollaboration[];
+    participant1: import('../../users/entities/user.entity').User | import('../../societes/entities/societe.entity').Societe | null;
+    participant2: import('../../users/entities/user.entity').User | import('../../societes/entities/societe.entity').Societe | null;
+  }> {
+    const conversation = await this.conversationService.getConversationById(conversationId, participantId, participantType);
+    const messages = await this.messageCollaborationRepository.findByConversationId(conversationId);
+
+    const [participant1, participant2] = await Promise.all([
+      this.conversationService.loadParticipantEntity(conversation.participant1_id, conversation.participant1_type),
+      this.conversationService.loadParticipantEntity(conversation.participant2_id, conversation.participant2_type),
+    ]);
+
+    return { messages, participant1, participant2 };
+  }
+
+  /**
    * Marquer un message comme lu
    */
   async markMessageAsRead(
