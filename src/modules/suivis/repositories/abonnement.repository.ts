@@ -28,7 +28,7 @@ export class AbonnementRepository extends Repository<Abonnement> {
 
     return this.find({
       where,
-      relations: ['societe', 'pagePartenariat'],
+      relations: ['societe', 'societe.profile', 'pagePartenariat'],
       order: { created_at: 'DESC' },
     });
   }

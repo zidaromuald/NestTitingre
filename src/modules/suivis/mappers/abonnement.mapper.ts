@@ -68,8 +68,14 @@ export class AbonnementMapper {
       } : undefined,
       societe: abonnement.societe ? {
         id: abonnement.societe.id,
+        nom: abonnement.societe.nom_societe,
         nom_societe: abonnement.societe.nom_societe,
         secteur_activite: abonnement.societe.secteur_activite,
+        profile: abonnement.societe.profile ? {
+          logo: abonnement.societe.profile.getLogoUrl
+            ? `https://api.titingre.com${abonnement.societe.profile.getLogoUrl()}`
+            : null,
+        } : null,
       } : undefined,
       statut: abonnement.statut,
       plan_collaboration: abonnement.plan_collaboration,
