@@ -18,8 +18,10 @@ export interface AbonnementPublicData {
   };
   societe?: {
     id: number;
+    nom: string;
     nom_societe: string;
     secteur_activite: string;
+    profile?: { logo: string | null } | null;
   };
   statut: string;
   plan_collaboration: string;
