@@ -145,8 +145,8 @@ export class DemandeAbonnementController {
       throw new UnauthorizedException('Endpoint réservé aux sociétés');
     }
 
-    const demandes = await this.demandeService.getDemandesRecues(user.id, status);
-    const data = demandes.map(d => this.demandeMapper.toPublicData(d));
+    const results = await this.demandeService.getDemandesRecues(user.id, status);
+    const data = results.map(({ demande, user: u }) => this.demandeMapper.toPublicData(demande, u ?? undefined));
     return { success: true, data, meta: { count: data.length, status: status || 'all' } };
   }
 

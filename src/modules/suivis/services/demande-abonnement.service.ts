@@ -1,7 +1,7 @@
 // modules/suivis/services/demande-abonnement.service.ts
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { DemandeAbonnement, DemandeAbonnementStatus } from '../entities/demande-abonnement.entity';
 import { Suivre } from '../entities/suivre.entity';
 import { Abonnement, AbonnementStatut, AbonnementPlan } from '../entities/abonnement.entity';
@@ -239,10 +239,20 @@ export class DemandeAbonnementService {
   }
 
   /**
-   * Demandes reçues par une société
+   * Demandes reçues par une société (avec les infos user incluses)
    */
-  async getDemandesRecues(societeId: number, status?: DemandeAbonnementStatus): Promise<DemandeAbonnement[]> {
-    return this.demandeAbonnementRepository.findDemandesRecues(societeId, status);
+  async getDemandesRecues(societeId: number, status?: DemandeAbonnementStatus): Promise<Array<{ demande: DemandeAbonnement; user: User | null }>> {
+    const demandes = await this.demandeAbonnementRepository.findDemandesRecues(societeId, status);
+    if (demandes.length === 0) return [];
+
+    const userIds = [...new Set(demandes.map(d => d.user_id))];
+    const users = await this.dataSource.getRepository(User).findBy({ id: In(userIds) });
+    const usersMap = new Map(users.map(u => [u.id, u]));
+
+    return demandes.map(d => ({
+      demande: d,
+      user: usersMap.get(d.user_id) ?? null,
+    }));
   }
 
   /**
